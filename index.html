@@ -115,6 +115,23 @@
         <b>JSON (private):</b> Use the Apps Script snippet above, deploy as web app (Anyone with link), paste URL here.
       </p>
     </div>
+    <div class="card" style="margin-top:18px;">
+      <div class="section-title">Online state (central cards & progress via Apps Script)</div>
+      <div class="row">
+        <div style="flex:1.6">
+          <label>API URL (Apps Script Web App /exec)</label>
+          <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+        </div>
+        <div style="flex:0.6">
+          <label>User token</label>
+          <input id="apiToken" placeholder="e.g. tomislav" />
+        </div>
+        <div style="flex:0.4;display:flex;align-items:flex-end">
+          <button id="btnApiLoad" class="primary" style="width:100%;">Load cards & state</button>
+        </div>
+      </div>
+      <p class="small muted">Keeps one shared set of cards and review stats across devices. Change cards in your Google Sheet; your progress auto-saves after each answer.</p>
+    </div>
 
     <!-- IMPORT / EXPORT -->
     <div class="card" style="margin-top:18px;">
@@ -470,12 +487,16 @@ function checkAnswer(){
   if (ok){
     it.good = (it.good||0) + 1;
     feedback(`✓ ${escapeHtml(user)} — correct`, "good", `Accepted: ${escapeHtml(targetRaw)}<div class="small">Press <b>Space</b> for next.</div>`);
-    save(); holdForSpace = true;
+    save();
+    apiSaveStateDebounced();
+    holdForSpace = true;
   } else {
     it.again = (it.again||0) + 1;
     feedback(`✗ ${escapeHtml(user||"(blank)")}`, "bad",
       `Expected: <b>${escapeHtml(targetRaw)}</b><div class="small">Press <b>Space</b> for next.</div>`);
-    save(); holdForSpace = true;
+    save();
+    apiSaveStateDebounced();
+    holdForSpace = true;
   }
 }
 
@@ -556,6 +577,92 @@ document.getElementById("mgrAddRow").onclick = ()=>{
 document.getElementById("mgrSearch").oninput = ()=> renderManager();
 document.getElementById("mgrTagFilter").onchange = ()=> renderManager();
 
+// --- central API settings in localStorage
+const LS_API_URL = "fsp_api_url";
+const LS_API_TOKEN = "fsp_api_token";
+const apiUrlEl = document.getElementById("apiUrl");
+const apiTokenEl = document.getElementById("apiToken");
+apiUrlEl.value = localStorage.getItem(LS_API_URL) || "";
+apiTokenEl.value = localStorage.getItem(LS_API_TOKEN) || "";
+apiUrlEl.onchange = ()=> localStorage.setItem(LS_API_URL, apiUrlEl.value.trim());
+apiTokenEl.onchange = ()=> localStorage.setItem(LS_API_TOKEN, apiTokenEl.value.trim());
+
+// --- helpers to convert local DB to “state” and back
+function stateFromDB(){
+  // store stats only; cards live in the Cards sheet
+  const stats = {};
+  db.items.forEach(it=>{
+    stats[it.front+"|||"+it.back] = {seen:it.seen||0, good:it.good||0, again:it.again||0, last:it.last||0, tags:it.tags||[]};
+  });
+  return {stats};
+}
+function applyStateToDB(state){
+  const stats = state?.stats || {};
+  db.items.forEach(it=>{
+    const key = it.front+"|||"+it.back;
+    const s = stats[key];
+    if (s){
+      it.seen = s.seen||0; it.good = s.good||0; it.again = s.again||0; it.last = s.last||0;
+      // tags: prefer live sheet's tags; but if empty, use saved ones
+      if ((!it.tags || !it.tags.length) && s.tags) it.tags = s.tags;
+    }
+  });
+}
+
+// --- load from API (cards + state)
+async function apiLoadAll(){
+  const api = apiUrlEl.value.trim();
+  const token = apiTokenEl.value.trim();
+  if (!api) return alert("Set API URL first.");
+  try{
+    // 1) load cards
+    const r1 = await fetch(api + "?mode=cards", {cache:"no-store"});
+    if (!r1.ok) throw new Error("cards HTTP " + r1.status);
+    const data1 = await r1.json();
+    let added=0, updated=0;
+    (data1.items||[]).forEach(rec=>{
+      const up = upsertItem({front:String(rec.front||''), back:String(rec.back||''), tags:String(rec.tags||'').split(/[,\s]+/).filter(Boolean)});
+      if (up) updated++; else added++;
+    });
+    // 2) load state
+    let data2 = {state:{}};
+    if (token){
+      const r2 = await fetch(api + "?mode=state&token=" + encodeURIComponent(token), {cache:"no-store"});
+      if (!r2.ok) throw new Error("state HTTP " + r2.status);
+      data2 = await r2.json();
+      applyStateToDB(data2.state||{});
+    }
+    save(); rebuildTagDropdowns(); renderManager();
+    updateStats(`API loaded. Cards + State`);
+  } catch(err){
+    alert("API load failed: " + err.message);
+  }
+}
+
+// --- save state to API (debounced)
+let saveTimer = null;
+function apiSaveStateDebounced(){
+  const api = apiUrlEl.value.trim();
+  const token = apiTokenEl.value.trim();
+  if (!api || !token) return; // no remote save if missing
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    try{
+      const payload = { token, state: stateFromDB() };
+      const r = await fetch(api, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+      });
+      // ignore response silently
+    } catch(_){}
+  }, 500);
+}
+
+// bind button
+document.getElementById("btnApiLoad").onclick = apiLoadAll;
+
+
 /* ---------- UI bindings ---------- */
 document.getElementById("start").onclick = () => { buildQueue(); nextCard(); };
 document.getElementById("end").onclick = () => {
@@ -578,14 +685,18 @@ document.getElementById("showHint").onclick = () => {
 document.getElementById("markAgain").onclick = () => {
   if (!session.current) return;
   session.current.again=(session.current.again||0)+1;
-  session.current.seen=(session.current.seen||0)+1; save();
+  session.current.seen=(session.current.seen||0)+1;
+  save();
+  apiSaveStateDebounced();
   feedback(`Marked Again`, "bad", `<div class="small">Press <b>Space</b> for next.</div>`);
   holdForSpace = true;
 };
 document.getElementById("markGood").onclick = () => {
   if (!session.current) return;
   session.current.good=(session.current.good||0)+1;
-  session.current.seen=(session.current.seen||0)+1; save();
+  session.current.seen=(session.current.seen||0)+1;
+  save();
+  apiSaveStateDebounced();
   feedback(`Marked Good`, "good", `<div class="small">Press <b>Space</b> for next.</div>`);
   holdForSpace = true;
 };
