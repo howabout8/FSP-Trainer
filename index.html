@@ -701,13 +701,36 @@ document.getElementById("markGood").onclick = () => {
   holdForSpace = true;
 };
 document.getElementById("answer").addEventListener("keydown", e=>{
-  if (e.key==="Enter"){ e.preventDefault(); checkAnswer(); }
-});
-document.addEventListener("keydown", e=>{
-  if (holdForSpace && e.code === "Space"){
-    e.preventDefault(); holdForSpace = false; nextCard();
+  // TAB => Reveal (don’t move focus)
+  if (e.key === "Tab"){
+    e.preventDefault();
+    document.getElementById("reveal").click();
+    return;
+  }
+  // ENTER => Check
+  if (e.key === "Enter"){
+    e.preventDefault();
+    checkAnswer();
   }
 });
+document.addEventListener("keydown", e=>{
+  // SPACE => next (when we’re holding after reveal/correct/wrong)
+  if (holdForSpace && e.code === "Space"){
+    e.preventDefault();
+    holdForSpace = false;
+    nextCard();
+    return;
+  }
+
+  // Y => Reveal (only if the answer box is empty, so you can still type 'y')
+  if (e.code === "KeyY" && !e.ctrlKey && !e.metaKey && !e.altKey){
+    const ans = document.getElementById("answer");
+    if (document.activeElement === ans && ans.value.trim() !== "") return; // let you type 'y'
+    e.preventDefault();
+    document.getElementById("reveal").click();
+  }
+});
+
 
 /* ---------- init ---------- */
 updateStats();
@@ -718,4 +741,5 @@ showTagsUsed();
 </script>
 </body>
 </html>
+
 
