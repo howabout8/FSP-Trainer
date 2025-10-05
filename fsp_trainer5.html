@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FSP Typing Trainer</title>
+<style>
+  :root { --bg:#0f172a; --panel:#111827; --ink:#e5e7eb; --muted:#9ca3af; --good:#16a34a; --bad:#dc2626; --accent:#2563eb; }
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:28px auto;padding:16px}
+  .card{background:var(--panel);border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  h1{font-size:26px;margin:0 0 12px}
+  label{font-size:12px;color:var(--muted)}
+  textarea,input,select,button{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #1f2937;background:#0b1220;color:var(--ink);padding:12px;font-size:16px}
+  input#answer{font-size:26px;padding:18px;border-radius:16px}
+  button{cursor:pointer;border:1px solid #23314a}
+  button.primary{background:var(--accent);border-color:transparent}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .row>div{flex:1}
+  .pill{display:inline-block;padding:6px 12px;border-radius:999px;background:#0b1220;border:1px solid #23314a;color:var(--muted);font-size:12px;margin-right:8px}
+  .prompt{font-size:40px;line-height:1.2;margin:14px 0 8px;text-align:center}
+  .feedback{min-height:40px;font-size:20px;text-align:center;margin-top:8px}
+  .good{color:var(--good)} .bad{color:var(--bad)}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .tag{display:inline-block;background:#132035;color:#9cc1ff;border:1px solid #263a66;border-radius:999px;padding:3px 8px;margin:2px;font-size:12px}
+  .controls{display:flex;gap:12px;justify-content:center;margin-top:14px}
+  .controls button{min-width:120px;padding:12px 14px;border-radius:12px}
+  .section-title{font-size:16px;color:var(--muted);margin:18px 0 6px}
+  code{background:#0b1220;padding:2px 6px;border-radius:6px;border:1px solid #1f2937}
+  .spacer{height:8px}
+  table{width:100%;border-collapse:collapse}
+  th, td{padding:10px;border-bottom:1px solid #1f2937;vertical-align:top}
+  th{color:#cbd5e1;text-align:left;font-weight:600}
+  td.actions{white-space:nowrap}
+  .btn-small{padding:8px 10px;border-radius:10px;font-size:14px}
+  .toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0 12px}
+  .toolbar .left, .toolbar .right{display:flex;gap:10px;align-items:center}
+  .search{max-width:320px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>FSP Typing Trainer</h1>
+
+    <!-- TRAINER -->
+    <div class="card">
+      <div class="stats small muted" id="stats">No items yet.</div>
+      <div class="spacer"></div>
+      <div class="prompt" id="prompt">—</div>
+      <input id="answer" placeholder="Type your answer and press Enter (Space = next)" disabled />
+      <div class="controls">
+        <button id="showHint">Hint</button>
+        <button id="reveal">Reveal</button>
+        <button id="markAgain">Again</button>
+        <button id="markGood" class="primary">Good</button>
+      </div>
+      <div id="feedback" class="feedback muted">Load items and click Start.</div>
+      <div class="controls">
+        <button id="start" class="primary">Start Session</button>
+        <button id="end">End Session</button>
+      </div>
+
+      <!-- Tag & session settings -->
+      <div class="controls" style="margin-top:6px;">
+        <div style="max-width:360px;width:100%;">
+          <label>Filter by tag</label>
+          <select id="tagDropdown"><option value="">— All tags —</option></select>
+        </div>
+        <div style="max-width:180px;width:100%;">
+          <label>Direction</label>
+          <select id="direction">
+            <option value="de-en">German → English</option>
+            <option value="en-de">English → German</option>
+          </select>
+        </div>
+        <div style="max-width:160px;width:100%;">
+          <label>Session size</label>
+          <input id="sessionSize" type="number" min="1" value="50" />
+        </div>
+        <div style="max-width:220px;width:100%;">
+          <label>Case sensitivity</label>
+          <select id="caseMode">
+            <option value="ignore">Ignore case/umlauts</option>
+            <option value="strict">Strict</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="tagsUsed" class="small" style="text-align:center;margin-top:8px;"></div>
+    </div>
+
+    <!-- CLOUD SYNC -->
+    <div class="card" style="margin-top:18px;">
+      <div class="section-title">Cloud sync (Google Sheet CSV/TSV or JSON API)</div>
+      <div class="row">
+        <div style="flex:1.6">
+          <label>Sheet URL (published CSV/TSV or Apps Script JSON)</label>
+          <input id="sheetUrl" placeholder="Paste your published CSV/TSV link or Apps Script web app URL" />
+        </div>
+        <div style="flex:0.6">
+          <label>Auto-sync on start</label>
+          <select id="autoSync">
+            <option value="off">Off</option>
+            <option value="on">On</option>
+          </select>
+        </div>
+        <div style="flex:0.4;display:flex;align-items:flex-end">
+          <button id="btnSync" class="primary" style="width:100%;">Sync from Google Sheet</button>
+        </div>
+      </div>
+      <p class="small muted" style="margin-top:8px;">
+        <b>CSV/TSV (public):</b> File → Share → Publish to the web → select your tab → CSV → copy link.  
+        <b>JSON (private):</b> Use the Apps Script snippet above, deploy as web app (Anyone with link), paste URL here.
+      </p>
+    </div>
+
+    <!-- IMPORT / EXPORT -->
+    <div class="card" style="margin-top:18px;">
+      <div class="section-title">Import / Export (manual)</div>
+      <label>Paste items (one per line): <span class="muted">Format: <code>German;English;tags</code> (TAB also ok). Synonyms with <code>/</code>, <code>|</code>, <code>,</code>. Bracket hints like <code>(- n)</code> ignored. “X of Y” also accepts just <code>X</code>.</span></label>
+      <textarea id="bulk" rows="8" placeholder="nape/neck;	der Nacken&#10;shoulder;	die Schulter (- n)&#10;buttocks;	der Hintern, Po&#10;sole of foot;	die Fußsohle (- n)"></textarea>
+      <div class="row" style="margin-top:10px;">
+        <div><button id="btnImport" class="primary">+ Import / Merge</button></div>
+        <div class="row" style="flex:1">
+          <div><button id="btnExport">Export JSON</button></div>
+          <div><button id="btnClear">Clear ALL (danger)</button></div>
+        </div>
+      </div>
+      <p class="small muted" style="margin-top:8px;">Data auto-saves (Local Storage). Importing the same item updates text/tags and keeps stats.</p>
+    </div>
+
+    <!-- CARDS MANAGER -->
+    <div class="card" style="margin-top:18px;">
+      <div class="section-title">Cards Manager (view / edit / delete / add)</div>
+      <div class="toolbar">
+        <div class="left">
+          <input id="mgrSearch" class="search" placeholder="Search text or tag…" />
+          <select id="mgrTagFilter"><option value="">— All tags —</option></select>
+        </div>
+        <div class="right">
+          <button id="mgrRefresh" class="btn-small">Refresh</button>
+          <button id="mgrAddRow" class="btn-small primary">+ Add blank row</button>
+        </div>
+      </div>
+      <div style="overflow:auto; max-height:420px; border:1px solid #1f2937; border-radius:12px;">
+        <table id="mgrTable">
+          <thead>
+            <tr>
+              <th style="width:34%;">Front (prompt)</th>
+              <th style="width:34%;">Back (answer)</th>
+              <th style="width:20%;">Tags (comma/space)</th>
+              <th style="width:12%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="mgrBody"></tbody>
+        </table>
+      </div>
+      <p class="small muted" style="margin-top:8px;">Edits need <b>Save</b> per row. Delete is immediate. Use <b>Refresh</b> after imports/sync.</p>
+    </div>
+  </div>
+
+<script>
+/* ---------- Storage & migration ---------- */
+const LS_KEY = "fsp_trainer_v5";
+const LEGACY_KEYS = ["fsp_trainer_v4","fsp_trainer_v3","fsp_trainer_v2","fsp_trainer_v1"];
+const LS_SHEET_URL = "fsp_trainer_sheet_url";
+const LS_AUTO_SYNC = "fsp_trainer_auto_sync";
+let holdForSpace = false;
+
+function loadDB(){
+  let db = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+  if (!db){
+    for (const k of LEGACY_KEYS){
+      const legacy = localStorage.getItem(k);
+      if (legacy){
+        try { db = JSON.parse(legacy); } catch(e){ db=null; }
+        if (db) break;
+      }
+    }
+  }
+  if (!db) db = {items:[]};
+  localStorage.setItem(LS_KEY, JSON.stringify(db));
+  return db;
+}
+let db = loadDB();
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
+
+/* ---------- Norm & parsing ---------- */
+const escapeHtml = (s) => (s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+const norm = (s, caseMode="ignore") => {
+  if (!s) return "";
+  let t = s.trim();
+  t = t.replace(/\([^)]*\)/g, " ").replace(/\s{2,}/g," ").trim();
+  t = t.replace(/\s*-\s*[a-zäöüß]+$/i, "").trim();
+  if (caseMode==="ignore"){
+    t = t.toLowerCase()
+      .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss");
+  }
+  return t.replace(/\s{2,}/g," ").trim();
+};
+const splitSynonyms = (s) => s.split(/\s*(?:\||\/|,)\s*/).map(x=>x.trim()).filter(Boolean);
+function expandSynonyms(raw){
+  const base = splitSynonyms(raw);
+  const expanded = [];
+  for (const syn of base){
+    expanded.push(syn);
+    const m = syn.match(/^(.+?)\s+of\s+.+$/i);
+    if (m && m[1]) expanded.push(m[1].trim());
+  }
+  return Array.from(new Set(expanded));
+}
+function parseLine(line){
+  let parts = line.split(";");
+  if (parts.length < 2) parts = line.split("\t");
+  parts = parts.map(s=>s.trim());
+  if (parts.length < 2) return null;
+  const front = parts[0];
+  const back  = parts[1];
+  const tags  = (parts[2]||"").split(/[,\s]+/).filter(Boolean);
+  return {front, back, tags};
+}
+
+/* ---------- CSV/TSV parsing ---------- */
+function parseDelimited(text){
+  // Basic CSV parser w/ quotes; also detects TSV
+  const isTSV = (text.indexOf("\t") > -1) && (text.split("\n")[0].split("\t").length >= 2);
+  const delim = isTSV ? "\t" : ",";
+  const rows = [];
+  let i=0, field="", row=[], inQuotes=false, c, prev=null;
+  const pushField = ()=>{ row.push(field); field=""; };
+  const pushRow = ()=>{ rows.push(row); row=[]; };
+  while (i < text.length){
+    c = text[i++];
+    if (inQuotes){
+      if (c === '"'){
+        if (text[i] === '"'){ field += '"'; i++; }
+        else { inQuotes = false; }
+      } else { field += c; }
+    } else {
+      if (c === '"'){ inQuotes = true; }
+      else if (c === delim){ pushField(); }
+      else if (c === "\n"){
+        if (prev === "\r"){ /* ignore CRLF */ }
+        pushField(); pushRow();
+      } else if (c === "\r"){
+        pushField(); pushRow();
+      } else { field += c; }
+    }
+    prev = c;
+  }
+  // last field/row
+  if (field.length || row.length){ pushField(); pushRow(); }
+  // trim empty trailing rows
+  while (rows.length && rows[rows.length-1].every(x=>!String(x||"").trim())) rows.pop();
+  return rows;
+}
+
+/* ---------- Trainer state ---------- */
+let session = { queue:[], index:-1, current:null, size:50, direction:"de-en", tag:"", caseMode:"ignore" };
+
+function updateStats(extra=""){
+  const total = db.items.length;
+  const seen = db.items.reduce((a,b)=>a+(b.seen||0),0);
+  const good = db.items.reduce((a,b)=>a+(b.good||0),0);
+  const again= db.items.reduce((a,b)=>a+(b.again||0),0);
+  document.getElementById("stats").innerHTML =
+    `<span class="pill">Items: ${total}</span>
+     <span class="pill">Seen: ${seen}</span>
+     <span class="pill">Good: ${good}</span>
+     <span class="pill">Again: ${again}</span>
+     ${extra? `<span class="pill">${escapeHtml(extra)}</span>`:""}`;
+}
+function showTagsUsed(){
+  const unique = new Set();
+  session.queue.forEach(it => (it.tags||[]).forEach(t=>unique.add(t)));
+  document.getElementById("tagsUsed").innerHTML =
+    "Tags in session: " + (unique.size? Array.from(unique).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("") : "<span class='muted'>—</span>");
+}
+function rebuildTagDropdowns(){
+  const allTags = Array.from(new Set(db.items.flatMap(it => it.tags||[]))).sort((a,b)=>a.localeCompare(b,'de'));
+  for (const id of ["tagDropdown","mgrTagFilter"]){
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">— All tags —</option>`;
+    for (const t of allTags){
+      const o = document.createElement("option");
+      o.value = t; o.textContent = t;
+      sel.appendChild(o);
+    }
+    if ([...sel.options].some(o=>o.value===cur)) sel.value = cur;
+  }
+}
+
+/* ---------- Import / Export / Clear ---------- */
+document.getElementById("btnImport").onclick = () => {
+  const txt = document.getElementById("bulk").value;
+  let added=0, updated=0;
+  txt.split(/\n/).map(l=>l.trim()).filter(Boolean).forEach(line=>{
+    const rec = parseLine(line); if (!rec) return;
+    upsertItem(rec) ? updated++ : added++;
+  });
+  save(); updateStats(`Imported. Added ${added}, updated ${updated}.`);
+  rebuildTagDropdowns(); renderManager();
+};
+document.getElementById("btnExport").onclick = () => {
+  const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = "fsp_trainer_data.json"; a.click();
+};
+document.getElementById("btnClear").onclick = () => {
+  if (!confirm("Clear ALL saved items and stats? This cannot be undone.")) return;
+  db = {items:[]}; save(); updateStats("Cleared"); rebuildTagDropdowns(); renderManager();
+};
+
+/* ---------- Upsert helper ---------- */
+function upsertItem(rec){
+  const idx = db.items.findIndex(it => norm(it.front)===norm(rec.front) && norm(it.back)===norm(rec.back));
+  if (idx>=0){
+    const it = db.items[idx];
+    const tagset = new Set([...(it.tags||[]), ...((rec.tags||[]))]);
+    db.items[idx] = {...it, front:rec.front, back:rec.back, tags:[...tagset]};
+    return true; // updated
+  } else {
+    db.items.push({ id:Math.random().toString(36).slice(2,10), front:rec.front, back:rec.back, tags:rec.tags||[], seen:0, good:0, again:0, last:0 });
+    return false; // added
+  }
+}
+
+/* ---------- Cloud Sync ---------- */
+const sheetUrlInput = document.getElementById("sheetUrl");
+const autoSyncSel = document.getElementById("autoSync");
+sheetUrlInput.value = localStorage.getItem(LS_SHEET_URL) || "";
+autoSyncSel.value = localStorage.getItem(LS_AUTO_SYNC) || "off";
+autoSyncSel.onchange = ()=> localStorage.setItem(LS_AUTO_SYNC, autoSyncSel.value);
+sheetUrlInput.onchange = ()=> localStorage.setItem(LS_SHEET_URL, sheetUrlInput.value.trim());
+
+document.getElementById("btnSync").onclick = async () => {
+  const url = (sheetUrlInput.value||"").trim();
+  if (!url){ alert("Please paste your Sheet URL first."); return; }
+  try{
+    const res = await fetch(url, {cache:"no-store"});
+    if (!res.ok) throw new Error("HTTP "+res.status);
+    const ct = (res.headers.get("content-type")||"").toLowerCase();
+    let added=0, updated=0;
+
+    if (ct.includes("application/json")){
+      const data = await res.json();
+      const items = (data.items||[]).map(x => ({
+        front: String(x.front||"").trim(),
+        back:  String(x.back||"").trim(),
+        tags:  String(x.tags||"").split(/[,\s]+/).filter(Boolean)
+      })).filter(x=>x.front && x.back);
+      for (const it of items){ upsertItem(it) ? updated++ : added++; }
+    } else {
+      const text = await res.text();
+      const rows = parseDelimited(text);
+      if (!rows.length) throw new Error("No rows found");
+      // header?
+      const header = rows[0].map(h=>String(h||"").trim().toLowerCase());
+      let start = 0, cFront=0, cBack=1, cTags=2;
+      if (header.includes("front") && header.includes("back")){
+        cFront = header.indexOf("front");
+        cBack  = header.indexOf("back");
+        cTags  = header.indexOf("tags");
+        start = 1;
+      }
+      for (let i=start;i<rows.length;i++){
+        const r = rows[i];
+        const front = String(r[cFront]||"").trim();
+        const back  = String(r[cBack]||"").trim();
+        const tags  = (cTags>=0 && r[cTags]) ? String(r[cTags]).split(/[,\s]+/).filter(Boolean) : [];
+        if (!front || !back) continue;
+        upsertItem({front,back,tags}) ? updated++ : added++;
+      }
+    }
+    save(); updateStats(`Synced. Added ${added}, updated ${updated}.`);
+    rebuildTagDropdowns(); renderManager();
+  } catch(err){
+    alert("Sync failed: " + err.message + "\nTip: For CSV, use 'Publish to the web' link, or use the JSON Apps Script option.");
+  }
+};
+
+// Auto-sync (optional)
+window.addEventListener("load", async ()=>{
+  if (autoSyncSel.value === "on" && sheetUrlInput.value.trim()){
+    document.getElementById("btnSync").click();
+  }
+});
+
+/* ---------- Trainer ---------- */
+function buildQueue(){
+  const tag = document.getElementById("tagDropdown").value.trim();
+  const dir = document.getElementById("direction").value;
+  const n   = parseInt(document.getElementById("sessionSize").value||"50",10);
+  session.direction = dir;
+  session.size = n;
+  session.tag = tag;
+  session.caseMode = document.getElementById("caseMode").value;
+
+  let pool = db.items.slice();
+  if (tag) pool = pool.filter(it => (it.tags||[]).includes(tag));
+
+  const weighted = [];
+  pool.forEach(it=>{
+    const w = 1 + (it.again||0)*2 + Math.max(0, (it.seen||0)-(it.good||0))*0.5;
+    const copies = Math.max(1, Math.min(20, Math.round(w)));
+    for (let i=0;i<copies;i++) weighted.push(it);
+  });
+
+  const picked = new Map();
+  while (picked.size < Math.min(n, pool.length) && weighted.length){
+    const idx = Math.floor(Math.random()*weighted.length);
+    picked.set(weighted[idx].id, weighted[idx]);
+  }
+  session.queue = Array.from(picked.values());
+  session.index = -1;
+}
+function setPrompt(it){
+  const prompt = (session.direction==="de-en") ? it.front : it.back;
+  document.getElementById("prompt").textContent = prompt;
+  const ans = document.getElementById("answer");
+  ans.value = "";
+  ans.disabled = false;
+  ans.focus();
+  document.getElementById("feedback").innerHTML = `<span class="muted">Type your answer and press Enter. Press <b>Space</b> to go to the next card.</span>`;
+  holdForSpace = false;
+}
+function nextCard(){
+  if (!session.queue.length){ updateStats("No items match your filter yet."); return; }
+  session.index++;
+  if (session.index >= session.queue.length){
+    updateStats("Session finished ✓");
+    document.getElementById("prompt").textContent = "—";
+    document.getElementById("answer").disabled = true;
+    return;
+  }
+  session.current = session.queue[session.index];
+  setPrompt(session.current);
+  showTagsUsed();
+}
+function normalizeTargets(raw){
+  const ex = expandSynonyms(raw);
+  return ex.map(t => norm(t, session.caseMode)).filter(Boolean);
+}
+function isCorrect(user, targetRaw){
+  const userN = norm(user, session.caseMode);
+  const targets = normalizeTargets(targetRaw);
+  const articleRx = /^(der|die|das|den|dem|des)\s+/i;
+  for (const t of targets){
+    if (userN === t) return true;
+    const noArt = t.replace(articleRx,"").trim();
+    if (noArt && userN === noArt) return true;
+  }
+  return false;
+}
+function feedback(msg, cls, sub){
+  const el = document.getElementById("feedback");
+  el.className = "feedback " + (cls||"");
+  el.innerHTML = msg + (sub? `<div class="muted">${sub}</div>`:"");
+}
+function checkAnswer(){
+  const it = session.current; if (!it) return;
+  const user = document.getElementById("answer").value;
+  const targetRaw = (session.direction==="de-en") ? it.back : it.front;
+  const ok = isCorrect(user, targetRaw);
+
+  it.seen = (it.seen||0) + 1; it.last = Date.now();
+  if (ok){
+    it.good = (it.good||0) + 1;
+    feedback(`✓ ${escapeHtml(user)} — correct`, "good", `Accepted: ${escapeHtml(targetRaw)}<div class="small">Press <b>Space</b> for next.</div>`);
+    save(); holdForSpace = true;
+  } else {
+    it.again = (it.again||0) + 1;
+    feedback(`✗ ${escapeHtml(user||"(blank)")}`, "bad",
+      `Expected: <b>${escapeHtml(targetRaw)}</b><div class="small">Press <b>Space</b> for next.</div>`);
+    save(); holdForSpace = true;
+  }
+}
+
+/* ---------- Cards Manager ---------- */
+const mgrBody = document.getElementById("mgrBody");
+function rowHTML(it){
+  const tagsStr = (it.tags||[]).join(", ");
+  return `
+    <tr data-id="${it.id}">
+      <td><input class="mgr-front" value="${escapeHtml(it.front)}" /></td>
+      <td><input class="mgr-back" value="${escapeHtml(it.back)}" /></td>
+      <td><input class="mgr-tags" value="${escapeHtml(tagsStr)}" /></td>
+      <td class="actions">
+        <button class="btn-small primary mgr-save">Save</button>
+        <button class="btn-small mgr-del">Delete</button>
+      </td>
+    </tr>`;
+}
+function renderManager(){
+  const q = document.getElementById("mgrSearch").value.trim().toLowerCase();
+  const tfilter = document.getElementById("mgrTagFilter").value.trim();
+  const rows = db.items.filter(it=>{
+    const hay = (it.front+" "+it.back+" "+(it.tags||[]).join(" ")).toLowerCase();
+    const okQ = !q || hay.includes(q);
+    const okT = !tfilter || (it.tags||[]).includes(tfilter);
+    return okQ && okT;
+  }).sort((a,b)=> (a.front||"").localeCompare(b.front||"", "de"));
+  mgrBody.innerHTML = rows.map(rowHTML).join("") || `<tr><td colspan="4" class="muted">No cards match.</td></tr>`;
+}
+function getRowValues(tr){
+  const front = tr.querySelector(".mgr-front").value.trim();
+  const back  = tr.querySelector(".mgr-back").value.trim();
+  let tagsStr = tr.querySelector(".mgr-tags").value.trim();
+  const tags = tagsStr ? tagsStr.split(/[,\s]+/).filter(Boolean) : [];
+  return {front, back, tags};
+}
+function bindManagerEvents(){
+  mgrBody.onclick = (e)=>{
+    const tr = e.target.closest("tr"); if (!tr) return;
+    const id = tr.getAttribute("data-id");
+    if (e.target.classList.contains("mgr-save")){
+      const v = getRowValues(tr);
+      if (!v.front || !v.back){ alert("Front and Back cannot be empty."); return; }
+      const idx = db.items.findIndex(x=>x.id===id);
+      if (idx>=0){
+        db.items[idx].front = v.front;
+        db.items[idx].back  = v.back;
+        db.items[idx].tags  = v.tags;
+        save(); updateStats("Saved"); rebuildTagDropdowns();
+      } else if (id==="__new__"){
+        db.items.push({ id:Math.random().toString(36).slice(2,10), front:v.front, back:v.back, tags:v.tags, seen:0, good:0, again:0, last:0 });
+        save(); updateStats("Added"); rebuildTagDropdowns();
+      }
+      renderManager();
+    }
+    if (e.target.classList.contains("mgr-del")){
+      if (!confirm("Delete this card?")) return;
+      const idx = db.items.findIndex(x=>x.id===id);
+      if (idx>=0){ db.items.splice(idx,1); save(); updateStats("Deleted"); rebuildTagDropdowns(); renderManager(); }
+      else if (id==="__new__"){ tr.remove(); }
+    }
+  };
+}
+document.getElementById("mgrRefresh").onclick = ()=> renderManager();
+document.getElementById("mgrAddRow").onclick = ()=>{
+  const tr = document.createElement("tr");
+  tr.setAttribute("data-id","__new__");
+  tr.innerHTML = `
+    <td><input class="mgr-front" placeholder="Front (prompt)"/></td>
+    <td><input class="mgr-back" placeholder="Back (answer)"/></td>
+    <td><input class="mgr-tags" placeholder="e.g. cardiology basics"/></td>
+    <td class="actions">
+      <button class="btn-small primary mgr-save">Save</button>
+      <button class="btn-small mgr-del">Delete</button>
+    </td>`;
+  mgrBody.prepend(tr);
+};
+document.getElementById("mgrSearch").oninput = ()=> renderManager();
+document.getElementById("mgrTagFilter").onchange = ()=> renderManager();
+
+/* ---------- UI bindings ---------- */
+document.getElementById("start").onclick = () => { buildQueue(); nextCard(); };
+document.getElementById("end").onclick = () => {
+  session.queue=[]; session.index=-1; session.current=null; updateStats("Ended");
+  document.getElementById("prompt").textContent="—"; document.getElementById("answer").disabled=true;
+};
+document.getElementById("reveal").onclick = () => {
+  if (!session.current) return;
+  const ans = (session.direction==="de-en") ? session.current.back : session.current.front;
+  feedback(`Answer: <b>${escapeHtml(ans)}</b><div class="small">Press <b>Space</b> to continue.</div>`, "", "");
+  holdForSpace = true;
+};
+document.getElementById("showHint").onclick = () => {
+  if (!session.current) return;
+  const ans = (session.direction==="de-en") ? session.current.back : session.current.front;
+  const core = ans.replace(/\([^)]*\)/g,"").trim();
+  const hint = core.slice(0, Math.max(1, Math.ceil(core.length*0.5))) + "…";
+  feedback(`Hint: <b>${escapeHtml(hint)}</b>`, "", "");
+};
+document.getElementById("markAgain").onclick = () => {
+  if (!session.current) return;
+  session.current.again=(session.current.again||0)+1;
+  session.current.seen=(session.current.seen||0)+1; save();
+  feedback(`Marked Again`, "bad", `<div class="small">Press <b>Space</b> for next.</div>`);
+  holdForSpace = true;
+};
+document.getElementById("markGood").onclick = () => {
+  if (!session.current) return;
+  session.current.good=(session.current.good||0)+1;
+  session.current.seen=(session.current.seen||0)+1; save();
+  feedback(`Marked Good`, "good", `<div class="small">Press <b>Space</b> for next.</div>`);
+  holdForSpace = true;
+};
+document.getElementById("answer").addEventListener("keydown", e=>{
+  if (e.key==="Enter"){ e.preventDefault(); checkAnswer(); }
+});
+document.addEventListener("keydown", e=>{
+  if (holdForSpace && e.code === "Space"){
+    e.preventDefault(); holdForSpace = false; nextCard();
+  }
+});
+
+/* ---------- init ---------- */
+updateStats();
+rebuildTagDropdowns();
+renderManager();
+bindManagerEvents();
+showTagsUsed();
+</script>
+</body>
+</html>
