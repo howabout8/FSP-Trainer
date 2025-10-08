@@ -44,7 +44,13 @@
   .extra-ch { color: var(--bad);  border-bottom: 2px dotted #dc2626; }
   .feedback .label { font-size:12px; color:#9ca3af; display:block; margin-top:4px; }
   pre.inline { display:inline; white-space:pre-wrap; word-break:break-word; }
-  .answer-big { font-size: 40px; line-height: 1.25; }
+  .answer-big {
+    font-size: 40px;
+    line-height: 1.25;
+    text-align: center;
+    display: block;
+    margin-top: 6px;
+  }
   @media (max-width: 640px){ .answer-big{ font-size: 30px; } }
   pre.inline { 
     display:inline; 
@@ -591,7 +597,17 @@ function checkAnswer(){
     save();
     apiSaveStateDebounced();
     holdForSpace = true;
-
+  if (ok){
+    it.good = (it.good||0) + 1;
+    feedback(
+      `<div class="answer-big">✓ ${escapeHtml(user)} — correct</div>`,
+      "good",
+      `<div class="answer-big">Accepted: <b>${escapeHtml(expRaw)}</b></div>
+       <div class="small">Press <b>Space</b> for next.</div>`
+    );
+    save();
+    apiSaveStateDebounced();
+    holdForSpace = true;
   } else {
     it.again = (it.again||0) + 1;
 
@@ -854,6 +870,7 @@ showTagsUsed();
 </script>
 </body>
 </html>
+
 
 
 
