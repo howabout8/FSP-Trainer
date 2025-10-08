@@ -38,6 +38,11 @@
   .toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0 12px}
   .toolbar .left, .toolbar .right{display:flex;gap:10px;align-items:center}
   .search{max-width:320px}
+  .bad-ch { background: rgba(220,38,38,.25); border-bottom: 2px solid #dc2626; }
+  .miss-ch { background: rgba(220,38,38,.15); border-bottom: 2px dashed #dc2626; }
+  .extra-ch { background: rgba(220,38,38,.15); border-bottom: 2px dotted #dc2626; }
+  .feedback .label { font-size:12px; color:#9ca3af; display:block; margin-top:4px; }
+  pre.inline { display:inline; white-space:pre-wrap; word-break:break-word; }
 </style>
 </head>
 <body>
@@ -66,7 +71,9 @@
       <div class="controls" style="margin-top:6px;">
         <div style="max-width:360px;width:100%;">
           <label>Filter by tag</label>
-          <select id="tagDropdown"><option value="">— All tags —</option></select>
+          <select id="tagDropdown" multiple size="6" title="Ctrl/Cmd-click to choose multiple">
+            <option value="">— All tags —</option>
+          </select>
         </div>
         <div style="max-width:180px;width:100%;">
           <label>Direction</label>
@@ -295,19 +302,77 @@ function showTagsUsed(){
   document.getElementById("tagsUsed").innerHTML =
     "Tags in session: " + (unique.size? Array.from(unique).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("") : "<span class='muted'>—</span>");
 }
-function rebuildTagDropdowns(){
-  const allTags = Array.from(new Set(db.items.flatMap(it => it.tags||[]))).sort((a,b)=>a.localeCompare(b,'de'));
-  for (const id of ["tagDropdown","mgrTagFilter"]){
-    const sel = document.getElementById(id);
-    const cur = sel.value;
-    sel.innerHTML = `<option value="">— All tags —</option>`;
-    for (const t of allTags){
-      const o = document.createElement("option");
-      o.value = t; o.textContent = t;
-      sel.appendChild(o);
+function getSelectedTags(){
+  const sel = document.getElementById("tagDropdown");
+  const chosen = Array.from(sel.options).filter(o => o.selected && o.value);
+  return chosen.map(o => o.value);
+}
+function charDiff(expected, typed){
+  // Longest Common Subsequence to align strings
+  const a = expected.split(''), b = typed.split('');
+  const n=a.length, m=b.length;
+  const dp = Array.from({length:n+1},()=>Array(m+1).fill(0));
+  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--)
+    dp[i][j] = (a[i]===b[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
+
+  // backtrack to build diff
+  let i=0,j=0, outExp=[], outTyp=[];
+  while (i<n && j<m){
+    if (a[i]===b[j]){
+      outExp.push({ch:a[i], cls:''});
+      outTyp.push({ch:b[j], cls:''});
+      i++; j++;
+    } else if (dp[i+1][j] >= dp[i][j+1]){
+      outExp.push({ch:a[i], cls:'miss-ch'}); // missing in typed
+      i++;
+    } else {
+      outTyp.push({ch:b[j], cls:'extra-ch'}); // extra in typed
+      j++;
     }
-    if ([...sel.options].some(o=>o.value===cur)) sel.value = cur;
   }
+  while (i<n){ outExp.push({ch:a[i], cls:'miss-ch'}); i++; }
+  while (j<m){ outTyp.push({ch:b[j], cls:'extra-ch'}); j++; }
+
+  // also mark positions where both have a char but differ (rare after LCS ties)
+  // (optional) not needed because miss/extra covers it.
+
+  const span = (arr, wrapClass) =>
+    arr.map(x=> x.cls ? `<span class="${wrapClass||x.cls}">${escapeHtml(x.ch)}</span>` :
+                        escapeHtml(x.ch)).join('');
+
+  return {
+    expectedHTML: span(outExp, 'bad-ch'),
+    typedHTML: span(outTyp, 'bad-ch')
+  };
+}
+function rebuildTagDropdowns(){
+  const allTags = Array.from(new Set(db.items.flatMap(it => it.tags||[])))
+    .sort((a,b)=>a.localeCompare(b,'de'));
+
+  // remember selections
+  const dd = document.getElementById("tagDropdown");
+  const selected = new Set(Array.from(dd?.options||[])
+                      .filter(o=>o.selected && o.value).map(o=>o.value));
+
+  // trainer dropdown
+  dd.innerHTML = `<option value="">— All tags —</option>`;
+  for (const t of allTags){
+    const o = document.createElement("option");
+    o.value = t; o.textContent = t;
+    if (selected.has(t)) o.selected = true;
+    dd.appendChild(o);
+  }
+
+  // Cards Manager filter can stay single-select
+  const mgr = document.getElementById("mgrTagFilter");
+  const cur = mgr.value;
+  mgr.innerHTML = `<option value="">— All tags —</option>`;
+  for (const t of allTags){
+    const o = document.createElement("option");
+    o.value = t; o.textContent = t;
+    mgr.appendChild(o);
+  }
+  if ([...mgr.options].some(o=>o.value===cur)) mgr.value = cur;
 }
 
 /* ---------- Import / Export / Clear ---------- */
@@ -408,7 +473,7 @@ window.addEventListener("load", async ()=>{
 
 /* ---------- Trainer ---------- */
 function buildQueue(){
-  const tag = document.getElementById("tagDropdown").value.trim();
+  const tags = getSelectedTags();
   const dir = document.getElementById("direction").value;
   const n   = parseInt(document.getElementById("sessionSize").value||"50",10);
   session.direction = dir;
@@ -416,8 +481,14 @@ function buildQueue(){
   session.tag = tag;
   session.caseMode = document.getElementById("caseMode").value;
 
+
   let pool = db.items.slice();
-  if (tag) pool = pool.filter(it => (it.tags||[]).includes(tag));
+  if (tags.length){
+  // OR logic: keep items that have ANY of the selected tags
+    pool = pool.filter(it => (it.tags||[]).some(t => tags.includes(t)));
+  }
+// (If you want AND logic instead, use: 
+// pool = pool.filter(it => tags.every(t => (it.tags||[]).includes(t)));
 
   const weighted = [];
   pool.forEach(it=>{
@@ -479,21 +550,43 @@ function feedback(msg, cls, sub){
 }
 function checkAnswer(){
   const it = session.current; if (!it) return;
-  const user = document.getElementById("answer").value;
-  const targetRaw = (session.direction==="de-en") ? it.back : it.front;
-  const ok = isCorrect(user, targetRaw);
 
-  it.seen = (it.seen||0) + 1; it.last = Date.now();
+  const user = document.getElementById("answer").value;
+  // Expected answer for current direction
+  const expRaw = (session.direction==="de-en") ? it.back : it.front;
+  const ok = isCorrect(user, expRaw);
+
+  it.seen = (it.seen||0) + 1; 
+  it.last = Date.now();
+
   if (ok){
     it.good = (it.good||0) + 1;
-    feedback(`✓ ${escapeHtml(user)} — correct`, "good", `Accepted: ${escapeHtml(targetRaw)}<div class="small">Press <b>Space</b> for next.</div>`);
+    feedback(
+      `✓ ${escapeHtml(user)} — correct`,
+      "good",
+      `Accepted: <b>${escapeHtml(expRaw)}</b><div class="small">Press <b>Space</b> for next.</div>`
+    );
     save();
     apiSaveStateDebounced();
     holdForSpace = true;
+
   } else {
     it.again = (it.again||0) + 1;
-    feedback(`✗ ${escapeHtml(user||"(blank)")}`, "bad",
-      `Expected: <b>${escapeHtml(targetRaw)}</b><div class="small">Press <b>Space</b> for next.</div>`);
+
+    // For nicer display, strip bracket hints from expected when diffing
+    const expDisplay = expRaw.replace(/\([^)]*\)/g,"").trim();
+    const diff = charDiff(expDisplay, user || "");
+
+    feedback(
+      `<span>✗</span>
+       <div class="label">Your answer</div>
+       <pre class="inline">${diff.typedHTML || "(blank)"}</pre>
+       <div class="label">Expected</div>
+       <pre class="inline">${diff.expectedHTML}</pre>`,
+      "bad",
+      `<div class="small">Press <b>Space</b> for next.</div>`
+    );
+
     save();
     apiSaveStateDebounced();
     holdForSpace = true;
@@ -741,5 +834,6 @@ showTagsUsed();
 </script>
 </body>
 </html>
+
 
 
