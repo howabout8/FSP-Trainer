@@ -43,6 +43,14 @@
   .extra-ch { background: rgba(220,38,38,.15); border-bottom: 2px dotted #dc2626; }
   .feedback .label { font-size:12px; color:#9ca3af; display:block; margin-top:4px; }
   pre.inline { display:inline; white-space:pre-wrap; word-break:break-word; }
+  .ok-ch { color: var(--good); font-weight: 600; } /* correct letters = green */
+  pre.inline { 
+    display:inline; 
+    white-space:pre-wrap; 
+    word-break:break-word; 
+    font-size: 34px;           /* bigger when showing answer */
+    line-height: 1.25;
+  }
 </style>
 </head>
 <body>
@@ -308,41 +316,39 @@ function getSelectedTags(){
   return chosen.map(o => o.value);
 }
 function charDiff(expected, typed){
-  // Longest Common Subsequence to align strings
   const a = expected.split(''), b = typed.split('');
   const n=a.length, m=b.length;
   const dp = Array.from({length:n+1},()=>Array(m+1).fill(0));
   for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--)
     dp[i][j] = (a[i]===b[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
 
-  // backtrack to build diff
   let i=0,j=0, outExp=[], outTyp=[];
   while (i<n && j<m){
     if (a[i]===b[j]){
-      outExp.push({ch:a[i], cls:''});
-      outTyp.push({ch:b[j], cls:''});
+      // match → mark as OK (green)
+      outExp.push({ch:a[i], cls:'ok-ch'});
+      outTyp.push({ch:b[j], cls:'ok-ch'});
       i++; j++;
     } else if (dp[i+1][j] >= dp[i][j+1]){
-      outExp.push({ch:a[i], cls:'miss-ch'}); // missing in typed
+      // missing in typed → red on expected
+      outExp.push({ch:a[i], cls:'miss-ch'});
       i++;
     } else {
-      outTyp.push({ch:b[j], cls:'extra-ch'}); // extra in typed
+      // extra in typed → red on typed
+      outTyp.push({ch:b[j], cls:'extra-ch'});
       j++;
     }
   }
   while (i<n){ outExp.push({ch:a[i], cls:'miss-ch'}); i++; }
   while (j<m){ outTyp.push({ch:b[j], cls:'extra-ch'}); j++; }
 
-  // also mark positions where both have a char but differ (rare after LCS ties)
-  // (optional) not needed because miss/extra covers it.
-
-  const span = (arr, wrapClass) =>
-    arr.map(x=> x.cls ? `<span class="${wrapClass||x.cls}">${escapeHtml(x.ch)}</span>` :
+  const span = (arr) =>
+    arr.map(x=> x.cls ? `<span class="${x.cls}">${escapeHtml(x.ch)}</span>` :
                         escapeHtml(x.ch)).join('');
 
   return {
-    expectedHTML: span(outExp, 'bad-ch'),
-    typedHTML: span(outTyp, 'bad-ch')
+    expectedHTML: span(outExp),   // show per-char colors
+    typedHTML:    span(outTyp)
   };
 }
 function rebuildTagDropdowns(){
@@ -844,6 +850,7 @@ showTagsUsed();
 </script>
 </body>
 </html>
+
 
 
 
