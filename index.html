@@ -21,6 +21,19 @@
   .prompt{font-size:40px;line-height:1.2;margin:14px 0 8px;text-align:center}
   .feedback{min-height:40px;font-size:20px;text-align:center;margin-top:8px}
   .good{color:var(--good)} .bad{color:var(--bad)}
+  .feedback.good .answer-big {
+    font-size: 40px !important;
+    line-height: 1.25;
+    text-align: center;
+    display: block;
+    margin-top: 6px;
+  }
+  
+  @media (max-width: 640px){
+    .feedback.good .answer-big {
+      font-size: 30px !important;
+    }
+  }
   .muted{color:var(--muted)}
   .small{font-size:12px}
   .stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
@@ -590,20 +603,10 @@ function checkAnswer(){
   if (ok){
     it.good = (it.good||0) + 1;
     feedback(
-      `✓ ${escapeHtml(user)} — correct`,
+      `<div class="answer-big">✓ ${escapeHtml(user)} — correct</div>
+       <div class="answer-big">Accepted: <b>${escapeHtml(expRaw)}</b></div>`,
       "good",
-      `Accepted: <b>${escapeHtml(expRaw)}</b><div class="small">Press <b>Space</b> for next.</div>`
-    );
-    save();
-    apiSaveStateDebounced();
-    holdForSpace = true;
-  if (ok){
-    it.good = (it.good||0) + 1;
-    feedback(
-      `<div class="answer-big">✓ ${escapeHtml(user)} — correct</div>`,
-      "good",
-      `<div class="answer-big">Accepted: <b>${escapeHtml(expRaw)}</b></div>
-       <div class="small">Press <b>Space</b> for next.</div>`
+      `<div class="small">Press <b>Space</b> for next.</div>`
     );
     save();
     apiSaveStateDebounced();
@@ -870,6 +873,7 @@ showTagsUsed();
 </script>
 </body>
 </html>
+
 
 
 
