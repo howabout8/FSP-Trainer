@@ -473,21 +473,21 @@ window.addEventListener("load", async ()=>{
 
 /* ---------- Trainer ---------- */
 function buildQueue(){
-  const tags = getSelectedTags();                          // ← array now
+  const tags = getSelectedTags();                          // multi-select array
   const dir  = document.getElementById("direction").value;
   const n    = parseInt(document.getElementById("sessionSize").value||"50",10);
 
   session.direction = dir;
   session.size      = n;
-  session.tags      = tags;                                // ← store array (optional)
+  session.tags      = tags;                                // store array
   session.caseMode  = document.getElementById("caseMode").value;
 
   let pool = db.items.slice();
 
   if (tags.length){
-    // OR logic: keep items that have ANY of the selected tags
+    // OR logic: include any of selected tags
     pool = pool.filter(it => (it.tags||[]).some(t => tags.includes(t)));
-    // For AND logic instead:
+    // For AND logic instead, use this:
     // pool = pool.filter(it => tags.every(t => (it.tags||[]).includes(t)));
   }
 
@@ -498,7 +498,7 @@ function buildQueue(){
     return;
   }
 
-  // weight by mistakes/seen
+  // weight cards so harder ones appear more often
   const weighted = [];
   for (const it of pool){
     const w = 1 + (it.again||0)*2 + Math.max(0, (it.seen||0)-(it.good||0))*0.5;
@@ -844,6 +844,7 @@ showTagsUsed();
 </script>
 </body>
 </html>
+
 
 
 
