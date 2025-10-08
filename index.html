@@ -39,11 +39,13 @@
   .toolbar .left, .toolbar .right{display:flex;gap:10px;align-items:center}
   .search{max-width:320px}
   .bad-ch { background: rgba(220,38,38,.25); border-bottom: 2px solid #dc2626; }
-  .miss-ch { background: rgba(220,38,38,.15); border-bottom: 2px dashed #dc2626; }
-  .extra-ch { background: rgba(220,38,38,.15); border-bottom: 2px dotted #dc2626; }
+  .ok-ch    { color: var(--good); font-weight: 700; }           /* correct letters */
+  .miss-ch  { color: var(--bad);  border-bottom: 2px dashed #dc2626; }
+  .extra-ch { color: var(--bad);  border-bottom: 2px dotted #dc2626; }
   .feedback .label { font-size:12px; color:#9ca3af; display:block; margin-top:4px; }
   pre.inline { display:inline; white-space:pre-wrap; word-break:break-word; }
-  .ok-ch { color: var(--good); font-weight: 600; } /* correct letters = green */
+  .answer-big { font-size: 40px; line-height: 1.25; }
+  @media (max-width: 640px){ .answer-big{ font-size: 30px; } }
   pre.inline { 
     display:inline; 
     white-space:pre-wrap; 
@@ -315,41 +317,45 @@ function getSelectedTags(){
   const chosen = Array.from(sel.options).filter(o => o.selected && o.value);
   return chosen.map(o => o.value);
 }
+function normVisChar(ch){
+  // normalize for comparison, not for display
+  return ch
+    .toLowerCase()
+    .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss");
+}
 function charDiff(expected, typed){
+  // arrays of original chars (for display)
   const a = expected.split(''), b = typed.split('');
+  // arrays of comparable chars (for matching)
+  const ca = a.map(normVisChar), cb = b.map(normVisChar);
+
   const n=a.length, m=b.length;
   const dp = Array.from({length:n+1},()=>Array(m+1).fill(0));
   for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--)
-    dp[i][j] = (a[i]===b[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
+    dp[i][j] = (ca[i]===cb[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
 
   let i=0,j=0, outExp=[], outTyp=[];
   while (i<n && j<m){
-    if (a[i]===b[j]){
-      // match → mark as OK (green)
-      outExp.push({ch:a[i], cls:'ok-ch'});
+    if (ca[i]===cb[j]){
+      outExp.push({ch:a[i], cls:'ok-ch'});    // match → green
       outTyp.push({ch:b[j], cls:'ok-ch'});
       i++; j++;
     } else if (dp[i+1][j] >= dp[i][j+1]){
-      // missing in typed → red on expected
-      outExp.push({ch:a[i], cls:'miss-ch'});
+      outExp.push({ch:a[i], cls:'miss-ch'});  // missing in typed → red on expected
       i++;
     } else {
-      // extra in typed → red on typed
-      outTyp.push({ch:b[j], cls:'extra-ch'});
+      outTyp.push({ch:b[j], cls:'extra-ch'}); // extra in typed → red on typed
       j++;
     }
   }
   while (i<n){ outExp.push({ch:a[i], cls:'miss-ch'}); i++; }
   while (j<m){ outTyp.push({ch:b[j], cls:'extra-ch'}); j++; }
 
-  const span = (arr) =>
-    arr.map(x=> x.cls ? `<span class="${x.cls}">${escapeHtml(x.ch)}</span>` :
-                        escapeHtml(x.ch)).join('');
+  const span = arr => arr.map(x =>
+    x.cls ? `<span class="${x.cls}">${escapeHtml(x.ch)}</span>` : escapeHtml(x.ch)
+  ).join('');
 
-  return {
-    expectedHTML: span(outExp),   // show per-char colors
-    typedHTML:    span(outTyp)
-  };
+  return { expectedHTML: span(outExp), typedHTML: span(outTyp) };
 }
 function rebuildTagDropdowns(){
   const allTags = Array.from(new Set(db.items.flatMap(it => it.tags||[])))
@@ -592,17 +598,15 @@ function checkAnswer(){
     // For nicer display, strip bracket hints from expected when diffing
     const expDisplay = expRaw.replace(/\([^)]*\)/g,"").trim();
     const diff = charDiff(expDisplay, user || "");
-
     feedback(
       `<span>✗</span>
        <div class="label">Your answer</div>
-       <pre class="inline">${diff.typedHTML || "(blank)"}</pre>
+       <div class="answer-big"><pre class="inline">${diff.typedHTML || "(blank)"}</pre></div>
        <div class="label">Expected</div>
-       <pre class="inline">${diff.expectedHTML}</pre>`,
+       <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
       "bad",
       `<div class="small">Press <b>Space</b> for next.</div>`
     );
-
     save();
     apiSaveStateDebounced();
     holdForSpace = true;
@@ -850,6 +854,7 @@ showTagsUsed();
 </script>
 </body>
 </html>
+
 
 
 
