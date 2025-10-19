@@ -21,8 +21,7 @@
   .prompt{font-size:40px;line-height:1.2;margin:14px 0 8px;text-align:center}
   .feedback{min-height:40px;font-size:20px;text-align:center;margin-top:8px}
   .good{color:var(--good)} .bad{color:var(--bad)}
-  .muted{color:var(--muted)}
-  .small{font-size:12px}
+  .muted{color:var(--muted)} .small{font-size:12px}
   .stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
   .tag{display:inline-block;background:#132035;color:#9cc1ff;border:1px solid #263a66;border-radius:999px;padding:3px 8px;margin:2px;font-size:12px}
   .controls{display:flex;gap:12px;justify-content:center;margin-top:14px}
@@ -40,27 +39,31 @@
   .search{max-width:320px}
 
   /* Diff highlighting */
-  .ok-ch    { color: var(--good); font-weight: 700; }
-  .miss-ch  { color: var(--bad);  border-bottom: 2px dashed #dc2626; }
-  .extra-ch { color: var(--bad);  border-bottom: 2px dotted #dc2626; }
-  .feedback .label { font-size:12px; color:#9ca3af; display:block; margin-top:4px; }
-  pre.inline { display:inline; white-space:pre-wrap; word-break:break-word; }
+  .ok-ch{color:var(--good);font-weight:700}
+  .miss-ch{color:var(--bad);border-bottom:2px dashed #dc2626}
+  .extra-ch{color:var(--bad);border-bottom:2px dotted #dc2626}
+  .feedback .label{font-size:12px;color:#9ca3af;display:block;margin-top:4px}
+  pre.inline{display:inline;white-space:pre-wrap;word-break:break-word}
 
   /* Big feedback text */
-  .answer-big { font-size: 40px; line-height: 1.25; text-align: center; display: block; margin-top: 6px; }
-  @media (max-width: 640px){ .answer-big{ font-size: 30px; } }
-  .feedback.good .answer-big { font-size: 40px !important; line-height: 1.25; text-align: center; display:block; margin-top:6px; }
-  @media (max-width: 640px){ .feedback.good .answer-big { font-size: 30px !important; } }
+  .answer-big{font-size:40px;line-height:1.25;text-align:center;display:block;margin-top:6px}
+  @media (max-width:640px){.answer-big{font-size:30px}}
+  .feedback.good .answer-big{font-size:40px!important}
+  @media (max-width:640px){.feedback.good .answer-big{font-size:30px!important}}
 
-  /* Letter slots */
-  .slotRow{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  /* Hangman-style slots (underlines) */
+  .slotRow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
   .slot{
-    min-width:28px;height:40px;border:1px solid #263a66;border-radius:8px;
-    display:flex;align-items:center;justify-content:center;background:#0b1220;
-    font-size:26px;padding:0 6px
+    min-width:28px;height:38px;border:none;border-bottom:3px solid #263a66;border-radius:0;
+    background:transparent;font-size:28px;display:flex;align-items:flex-end;justify-content:center;padding:0 2px
   }
-  .slot.space{border:none;background:transparent;min-width:14px}
+  .slot.space{border:none;background:transparent;min-width:16px;height:38px}
   .slot.filled{font-weight:700}
+
+  /* Hide the native input when slots are ON (we still use it to capture keys) */
+  #answer.slots-hidden{
+    position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important
+  }
 </style>
 </head>
 <body>
@@ -73,7 +76,7 @@
       <div class="spacer"></div>
       <div class="prompt" id="prompt">—</div>
       <input id="answer" placeholder="Type your answer and press Enter (Space = next)" disabled />
-      <!-- Letter slots row (toggleable) -->
+      <!-- Letter slots row (toggleable & acts as main input UI) -->
       <div id="slots" class="slotRow" style="display:none;"></div>
 
       <div class="controls">
@@ -164,7 +167,7 @@
         <b>JSON (private):</b> Use the Apps Script snippet above, deploy as web app (Anyone with link), paste URL here.
       </p>
     </div>
-    <div class="card" style="margin-top:18px%;">
+    <div class="card" style="margin-top:18px;">
       <div class="section-title">Online state (central cards & progress via Apps Script)</div>
       <div class="row">
         <div style="flex:1.6">
@@ -294,7 +297,6 @@ function splitSynonymsModeAware(s, mode){
   // synonyms: split on /, |, ,
   return s.split(/\s*(?:\/|\||,)\s*/).map(x=>x.trim()).filter(Boolean);
 }
-
 function expandSynonyms(raw){
   const base = splitSynonymsModeAware(raw, (session?.slashMode || slashSel.value || "synonyms"));
   const expanded = [];
@@ -305,7 +307,6 @@ function expandSynonyms(raw){
   }
   return Array.from(new Set(expanded));
 }
-
 function parseLine(line){
   let parts = line.split(";");
   if (parts.length < 2) parts = line.split("\t");
@@ -376,83 +377,46 @@ function getSelectedTags(){
   return chosen.map(o => o.value);
 }
 function normVisChar(ch){
-  return ch
-    .toLowerCase()
-    .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss");
+  return ch.toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss");
 }
 function charDiff(expected, typed){
   const a = expected.split(''), b = typed.split('');
   const ca = a.map(normVisChar), cb = b.map(normVisChar);
-
   const n=a.length, m=b.length;
   const dp = Array.from({length:n+1},()=>Array(m+1).fill(0));
-  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--)
-    dp[i][j] = (ca[i]===cb[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
-
+  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--) dp[i][j] = (ca[i]===cb[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
   let i=0,j=0, outExp=[], outTyp=[];
   while (i<n && j<m){
-    if (ca[i]===cb[j]){
-      outExp.push({ch:a[i], cls:'ok-ch'});
-      outTyp.push({ch:b[j], cls:'ok-ch'});
-      i++; j++;
-    } else if (dp[i+1][j] >= dp[i][j+1]){
-      outExp.push({ch:a[i], cls:'miss-ch'});
-      i++;
-    } else {
-      outTyp.push({ch:b[j], cls:'extra-ch'});
-      j++;
-    }
+    if (ca[i]===cb[j]){ outExp.push({ch:a[i], cls:'ok-ch'}); outTyp.push({ch:b[j], cls:'ok-ch'}); i++; j++; }
+    else if (dp[i+1][j] >= dp[i][j+1]){ outExp.push({ch:a[i], cls:'miss-ch'}); i++; }
+    else { outTyp.push({ch:b[j], cls:'extra-ch'}); j++; }
   }
   while (i<n){ outExp.push({ch:a[i], cls:'miss-ch'}); i++; }
   while (j<m){ outTyp.push({ch:b[j], cls:'extra-ch'}); j++; }
-
-  const span = arr => arr.map(x =>
-    x.cls ? `<span class="${x.cls}">${escapeHtml(x.ch)}</span>` : escapeHtml(x.ch)
-  ).join('');
-
+  const span = arr => arr.map(x => x.cls ? `<span class="${x.cls}">${escapeHtml(x.ch)}</span>` : escapeHtml(x.ch)).join('');
   return { expectedHTML: span(outExp), typedHTML: span(outTyp) };
 }
 function rebuildTagDropdowns(){
-  const allTags = Array.from(new Set(db.items.flatMap(it => it.tags||[])))
-    .sort((a,b)=>a.localeCompare(b,'de'));
-
+  const allTags = Array.from(new Set(db.items.flatMap(it => it.tags||[]))).sort((a,b)=>a.localeCompare(b,'de'));
   const dd = document.getElementById("tagDropdown");
   const selected = new Set(Array.from(dd?.options||[]).filter(o=>o.selected && o.value).map(o=>o.value));
-
   dd.innerHTML = `<option value="">— All tags —</option>`;
-  for (const t of allTags){
-    const o = document.createElement("option");
-    o.value = t; o.textContent = t;
-    if (selected.has(t)) o.selected = true;
-    dd.appendChild(o);
-  }
-
-  const mgr = document.getElementById("mgrTagFilter");
-  const cur = mgr.value;
+  for (const t of allTags){ const o=document.createElement("option"); o.value=t; o.textContent=t; if (selected.has(t)) o.selected=true; dd.appendChild(o); }
+  const mgr = document.getElementById("mgrTagFilter"); const cur=mgr.value;
   mgr.innerHTML = `<option value="">— All tags —</option>`;
-  for (const t of allTags){
-    const o = document.createElement("option");
-    o.value = t; o.textContent = t;
-    mgr.appendChild(o);
-  }
+  for (const t of allTags){ const o=document.createElement("option"); o.value=t; o.textContent=t; mgr.appendChild(o); }
   if ([...mgr.options].some(o=>o.value===cur)) mgr.value = cur;
 }
 
 /* ---------- Import / Export / Clear ---------- */
 document.getElementById("btnImport").onclick = () => {
-  const txt = document.getElementById("bulk").value;
-  let added=0, updated=0;
-  txt.split(/\n/).map(l=>l.trim()).filter(Boolean).forEach(line=>{
-    const rec = parseLine(line); if (!rec) return;
-    upsertItem(rec) ? updated++ : added++;
-  });
-  save(); updateStats(`Imported. Added ${added}, updated ${updated}.`);
-  rebuildTagDropdowns(); renderManager();
+  const txt = document.getElementById("bulk").value; let added=0, updated=0;
+  txt.split(/\n/).map(l=>l.trim()).filter(Boolean).forEach(line=>{ const rec=parseLine(line); if (!rec) return; upsertItem(rec) ? updated++ : added++; });
+  save(); updateStats(`Imported. Added ${added}, updated ${updated}.`); rebuildTagDropdowns(); renderManager();
 };
 document.getElementById("btnExport").onclick = () => {
   const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-  a.download = "fsp_trainer_data.json"; a.click();
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fsp_trainer_data.json"; a.click();
 };
 document.getElementById("btnClear").onclick = () => {
   if (!confirm("Clear ALL saved items and stats? This cannot be undone.")) return;
@@ -462,15 +426,8 @@ document.getElementById("btnClear").onclick = () => {
 /* ---------- Upsert helper ---------- */
 function upsertItem(rec){
   const idx = db.items.findIndex(it => norm(it.front)===norm(rec.front) && norm(it.back)===norm(rec.back));
-  if (idx>=0){
-    const it = db.items[idx];
-    const tagset = new Set([...(it.tags||[]), ...((rec.tags||[]))]);
-    db.items[idx] = {...it, front:rec.front, back:rec.back, tags:[...tagset]};
-    return true;
-  } else {
-    db.items.push({ id:Math.random().toString(36).slice(2,10), front:rec.front, back:rec.back, tags:rec.tags||[], seen:0, good:0, again:0, last:0 });
-    return false;
-  }
+  if (idx>=0){ const it=db.items[idx]; const tagset=new Set([...(it.tags||[]), ...((rec.tags||[]))]); db.items[idx] = {...it, front:rec.front, back:rec.back, tags:[...tagset]}; return true; }
+  db.items.push({ id:Math.random().toString(36).slice(2,10), front:rec.front, back:rec.back, tags:rec.tags||[], seen:0, good:0, again:0, last:0 }); return false;
 }
 
 /* ---------- Cloud Sync ---------- */
@@ -480,173 +437,90 @@ sheetUrlInput.value = localStorage.getItem(LS_SHEET_URL) || "";
 autoSyncSel.value = localStorage.getItem(LS_AUTO_SYNC) || "off";
 autoSyncSel.onchange = ()=> localStorage.setItem(LS_AUTO_SYNC, autoSyncSel.value);
 sheetUrlInput.onchange = ()=> localStorage.setItem(LS_SHEET_URL, sheetUrlInput.value.trim());
-
 document.getElementById("btnSync").onclick = async () => {
-  const url = (sheetUrlInput.value||"").trim();
-  if (!url){ alert("Please paste your Sheet URL first."); return; }
+  const url = (sheetUrlInput.value||"").trim(); if (!url){ alert("Please paste your Sheet URL first."); return; }
   try{
-    const res = await fetch(url, {cache:"no-store"});
-    if (!res.ok) throw new Error("HTTP "+res.status);
-    const ct = (res.headers.get("content-type")||"").toLowerCase();
-    let added=0, updated=0;
-
+    const res = await fetch(url, {cache:"no-store"}); if (!res.ok) throw new Error("HTTP "+res.status);
+    const ct = (res.headers.get("content-type")||"").toLowerCase(); let added=0, updated=0;
     if (ct.includes("application/json")){
       const data = await res.json();
-      const items = (data.items||[]).map(x => ({
-        front: String(x.front||"").trim(),
-        back:  String(x.back||"").trim(),
-        tags:  String(x.tags||"").split(/[,\s]+/).filter(Boolean)
-      })).filter(x=>x.front && x.back);
+      const items = (data.items||[]).map(x => ({ front:String(x.front||"").trim(), back:String(x.back||"").trim(), tags:String(x.tags||"").split(/[,\s]+/).filter(Boolean) })).filter(x=>x.front && x.back);
       for (const it of items){ upsertItem(it) ? updated++ : added++; }
     } else {
-      const text = await res.text();
-      const rows = parseDelimited(text);
-      if (!rows.length) throw new Error("No rows found");
-      const header = rows[0].map(h=>String(h||"").trim().toLowerCase());
-      let start = 0, cFront=0, cBack=1, cTags=2;
-      if (header.includes("front") && header.includes("back")){
-        cFront = header.indexOf("front");
-        cBack  = header.indexOf("back");
-        cTags  = header.indexOf("tags");
-        start = 1;
-      }
+      const text = await res.text(); const rows = parseDelimited(text); if (!rows.length) throw new Error("No rows found");
+      const header = rows[0].map(h=>String(h||"").trim().toLowerCase()); let start = 0, cFront=0, cBack=1, cTags=2;
+      if (header.includes("front") && header.includes("back")){ cFront=header.indexOf("front"); cBack=header.indexOf("back"); cTags=header.indexOf("tags"); start=1; }
       for (let i=start;i<rows.length;i++){
-        const r = rows[i];
-        const front = String(r[cFront]||"").trim();
-        const back  = String(r[cBack]||"").trim();
-        const tags  = (cTags>=0 && r[cTags]) ? String(r[cTags]).split(/[,\s]+/).filter(Boolean) : [];
-        if (!front || !back) continue;
-        upsertItem({front,back,tags}) ? updated++ : added++;
+        const r = rows[i]; const front=String(r[cFront]||"").trim(); const back=String(r[cBack]||"").trim(); const tags=(cTags>=0 && r[cTags]) ? String(r[cTags]).split(/[,\s]+/).filter(Boolean) : [];
+        if (!front || !back) continue; upsertItem({front,back,tags}) ? updated++ : added++;
       }
     }
-    save(); updateStats(`Synced. Added ${added}, updated ${updated}.`);
-    rebuildTagDropdowns(); renderManager();
-  } catch(err){
-    alert("Sync failed: " + err.message + "\nTip: For CSV, use 'Publish to the web' link, or use the JSON Apps Script option.");
-  }
+    save(); updateStats(`Synced. Added ${added}, updated ${updated}.`); rebuildTagDropdowns(); renderManager();
+  } catch(err){ alert("Sync failed: " + err.message + "\nTip: For CSV, use 'Publish to the web' link, or use the JSON Apps Script option."); }
 };
-
-// Auto-sync (optional)
-window.addEventListener("load", async ()=>{
-  if (autoSyncSel.value === "on" && sheetUrlInput.value.trim()){
-    document.getElementById("btnSync").click();
-  }
-});
+window.addEventListener("load", async ()=>{ if (autoSyncSel.value === "on" && sheetUrlInput.value.trim()){ document.getElementById("btnSync").click(); }});
 
 /* ---------- Letter slots helpers ---------- */
 function firstVariant(text){
   const mode = session?.slashMode || slashSel.value || "synonyms";
-  if (mode === "literal"){
-    return String(text).split(/\s*(?:\||,)\s*/)[0] || "";
-  } else {
-    return String(text).split(/\s*(?:\/|\||,)\s*/)[0] || "";
-  }
+  if (mode === "literal"){ return String(text).split(/\s*(?:\||,)\s*/)[0] || ""; }
+  return String(text).split(/\s*(?:\/|\||,)\s*/)[0] || "";
 }
 function stripArticleIfNeeded(str){
-  if (!str) return "";
-  const articleRx = /^(der|die|das|den|dem|des)\s+/i;
-  if (session?.articleMode === "ignore"){
-    return str.replace(articleRx,"").trim();
-  }
+  if (!str) return ""; const articleRx = /^(der|die|das|den|dem|des)\s+/i;
+  if (session?.articleMode === "ignore"){ return str.replace(articleRx,"").trim(); }
   return str;
 }
 function slotTargetForCurrentCard(){
   if (!session.current) return "";
   const raw = (session.direction==="de-en") ? session.current.back : session.current.front;
-  let core = raw.replace(/\([^)]*\)/g,"").trim(); // remove bracket hints
-  core = firstVariant(core);
-  core = stripArticleIfNeeded(core);
-  return core;
+  let core = raw.replace(/\([^)]*\)/g,"").trim(); core = firstVariant(core); core = stripArticleIfNeeded(core); return core;
 }
 function renderSlots(target, typed){
   const host = document.getElementById("slots");
   const on = (slotSel.value === "on");
-  if (!on || !target){
-    host.style.display = "none";
-    host.innerHTML = "";
-    return;
-  }
-  host.style.display = "flex";
-
-  const tChars = Array.from(target);
-  const uChars = Array.from(typed||"");
-  const html = tChars.map((ch, i)=>{
+  if (!on || !target){ host.style.display="none"; host.innerHTML=""; return; }
+  host.style.display="flex";
+  const tChars = Array.from(target), uChars = Array.from(typed||"");
+  host.innerHTML = tChars.map((ch,i)=>{
     if (ch === " ") return `<div class="slot space"></div>`;
-    const fill = uChars[i] || "";
-    const filled = fill ? ' filled' : '';
+    const fill = uChars[i] || ""; const filled = fill ? ' filled' : '';
     return `<div class="slot${filled}">${escapeHtml(fill)}</div>`;
   }).join("");
-  host.innerHTML = html;
+}
+function updateAnswerVisibilityForSlots(){
+  const ans = document.getElementById("answer");
+  if (slotSel.value === "on"){ ans.classList.add("slots-hidden"); } else { ans.classList.remove("slots-hidden"); }
 }
 
 /* ---------- Trainer ---------- */
 function buildQueue(){
-  const tags = getSelectedTags();
-  const dir  = document.getElementById("direction").value;
-  const n    = parseInt(document.getElementById("sessionSize").value||"50",10);
-
-  session.direction = dir;
-  session.size      = n;
-  session.tags      = tags;
-  session.caseMode  = document.getElementById("caseMode").value;
-  session.articleMode = articleSel.value;
-  session.slashMode   = slashSel.value;
-
+  const tags = getSelectedTags(); const dir=document.getElementById("direction").value; const n=parseInt(document.getElementById("sessionSize").value||"50",10);
+  session.direction=dir; session.size=n; session.tags=tags; session.caseMode=document.getElementById("caseMode").value; session.articleMode=articleSel.value; session.slashMode=slashSel.value;
   let pool = db.items.slice();
-
-  if (tags.length){
-    pool = pool.filter(it => (it.tags||[]).some(t => tags.includes(t)));
-  }
-
-  if (!pool.length){
-    session.queue = [];
-    session.index = -1;
-    updateStats("No items match your filter yet.");
-    return;
-  }
-
-  const weighted = [];
-  for (const it of pool){
-    const w = 1 + (it.again||0)*2 + Math.max(0, (it.seen||0)-(it.good||0))*0.5;
-    const copies = Math.max(1, Math.min(20, Math.round(w)));
-    for (let i=0;i<copies;i++) weighted.push(it);
-  }
-
-  const picked = new Map();
-  while (picked.size < Math.min(n, pool.length) && weighted.length){
-    const idx = Math.floor(Math.random()*weighted.length);
-    picked.set(weighted[idx].id, weighted[idx]);
-  }
-
-  session.queue = Array.from(picked.values());
-  session.index = -1;
+  if (tags.length){ pool = pool.filter(it => (it.tags||[]).some(t => tags.includes(t))); }
+  if (!pool.length){ session.queue=[]; session.index=-1; updateStats("No items match your filter yet."); return; }
+  const weighted=[]; for (const it of pool){ const w=1+(it.again||0)*2+Math.max(0,(it.seen||0)-(it.good||0))*0.5; const copies=Math.max(1,Math.min(20,Math.round(w))); for (let i=0;i<copies;i++) weighted.push(it); }
+  const picked=new Map(); while (picked.size<Math.min(n,pool.length) && weighted.length){ const idx=Math.floor(Math.random()*weighted.length); picked.set(weighted[idx].id, weighted[idx]); }
+  session.queue=Array.from(picked.values()); session.index=-1;
 }
 function setPrompt(it){
   const prompt = (session.direction==="de-en") ? it.front : it.back;
   document.getElementById("prompt").textContent = prompt;
-  const ans = document.getElementById("answer");
-  ans.value = "";
-  ans.disabled = false;
-  ans.focus();
+  const ans=document.getElementById("answer"); ans.value=""; ans.disabled=false; ans.focus();
   document.getElementById("feedback").innerHTML = `<span class="muted">Type your answer and press Enter. Press <b>Space</b> to go to the next card.</span>`;
-  holdForSpace = false;
-
-  // Show/refresh letter slots
+  holdForSpace=false;
   renderSlots(slotTargetForCurrentCard(), "");
+  updateAnswerVisibilityForSlots();
 }
 function nextCard(){
   if (!session.queue.length){ updateStats("No items match your filter yet."); return; }
   session.index++;
   if (session.index >= session.queue.length){
-    updateStats("Session finished ✓");
-    document.getElementById("prompt").textContent = "—";
-    document.getElementById("answer").disabled = true;
-    document.getElementById("slots").style.display = "none";
-    return;
+    updateStats("Session finished ✓"); document.getElementById("prompt").textContent="—"; document.getElementById("answer").disabled=true; document.getElementById("slots").style.display="none"; return;
   }
   session.current = session.queue[session.index];
-  setPrompt(session.current);
-  showTagsUsed();
+  setPrompt(session.current); showTagsUsed();
 }
 function normalizeTargets(raw){
   const ex = expandSynonyms(raw);
@@ -656,11 +530,8 @@ function isCorrect(user, targetRaw){
   const userN = norm(user, session.caseMode);
   const targets = normalizeTargets(targetRaw);
   const articleRx = /^(der|die|das|den|dem|des)\s+/i;
-
   if (session.articleMode === "require"){
-    for (const t of targets){
-      if (userN === t) return true;
-    }
+    for (const t of targets){ if (userN === t) return true; }
     return false;
   } else {
     const userNoArt = userN.replace(articleRx,"").trim();
@@ -679,14 +550,10 @@ function feedback(msg, cls, sub){
 }
 function checkAnswer(){
   const it = session.current; if (!it) return;
-
   const user = document.getElementById("answer").value;
   const expRaw = (session.direction==="de-en") ? it.back : it.front;
   const ok = isCorrect(user, expRaw);
-
-  it.seen = (it.seen||0) + 1; 
-  it.last = Date.now();
-
+  it.seen = (it.seen||0) + 1; it.last = Date.now();
   if (ok){
     it.good = (it.good||0) + 1;
     feedback(
@@ -695,13 +562,9 @@ function checkAnswer(){
       "good",
       `<div class="small">Press <b>Space</b> for next.</div>`
     );
-    save();
-    apiSaveStateDebounced();
-    holdForSpace = true;
-
+    save(); apiSaveStateDebounced(); holdForSpace = true;
   } else {
     it.again = (it.again||0) + 1;
-
     const expDisplay = expRaw.replace(/\([^)]*\)/g,"").trim();
     const diff = charDiff(expDisplay, user || "");
     feedback(
@@ -713,9 +576,7 @@ function checkAnswer(){
       "bad",
       `<div class="small">Press <b>Space</b> for next.</div>`
     );
-    save();
-    apiSaveStateDebounced();
-    holdForSpace = true;
+    save(); apiSaveStateDebounced(); holdForSpace = true;
   }
 }
 
@@ -806,7 +667,7 @@ apiTokenEl.value = localStorage.getItem(LS_API_TOKEN) || "";
 apiUrlEl.onchange = ()=> localStorage.setItem(LS_API_URL, apiUrlEl.value.trim());
 apiTokenEl.onchange = ()=> localStorage.setItem(LS_API_TOKEN, apiTokenEl.value.trim());
 
-// --- helpers to convert local DB to “state” and back
+// --- state <-> API
 function stateFromDB(){
   const stats = {};
   db.items.forEach(it=>{
@@ -817,68 +678,37 @@ function stateFromDB(){
 function applyStateToDB(state){
   const stats = state?.stats || {};
   db.items.forEach(it=>{
-    const key = it.front+"|||"+it.back;
-    const s = stats[key];
-    if (s){
-      it.seen = s.seen||0; it.good = s.good||0; it.again = s.again||0; it.last = s.last||0;
-      if ((!it.tags || !it.tags.length) && s.tags) it.tags = s.tags;
-    }
+    const key = it.front+"|||"+it.back; const s = stats[key];
+    if (s){ it.seen=s.seen||0; it.good=s.good||0; it.again=s.again||0; it.last=s.last||0; if ((!it.tags||!it.tags.length) && s.tags) it.tags=s.tags; }
   });
 }
-
-// --- load from API (cards + state)
 async function apiLoadAll(){
-  const api = apiUrlEl.value.trim();
-  const token = apiTokenEl.value.trim();
+  const api = apiUrlEl.value.trim(); const token = apiTokenEl.value.trim();
   if (!api) return alert("Set API URL first.");
   try{
-    const r1 = await fetch(api + "?mode=cards", {cache:"no-store"});
-    if (!r1.ok) throw new Error("cards HTTP " + r1.status);
-    const data1 = await r1.json();
-    let added=0, updated=0;
-    (data1.items||[]).forEach(rec=>{
-      const up = upsertItem({front:String(rec.front||''), back:String(rec.back||''), tags:String(rec.tags||'').split(/[,\s]+/).filter(Boolean)});
-      if (up) updated++; else added++;
-    });
-    let data2 = {state:{}};
+    const r1 = await fetch(api + "?mode=cards", {cache:"no-store"}); if (!r1.ok) throw new Error("cards HTTP " + r1.status);
+    const data1 = await r1.json(); let added=0, updated=0;
+    (data1.items||[]).forEach(rec=>{ const up = upsertItem({front:String(rec.front||''), back:String(rec.back||''), tags:String(rec.tags||'').split(/[,\s]+/).filter(Boolean)}); if (up) updated++; else added++; });
     if (token){
-      const r2 = await fetch(api + "?mode=state&token=" + encodeURIComponent(token), {cache:"no-store"});
-      if (!r2.ok) throw new Error("state HTTP " + r2.status);
-      data2 = await r2.json();
-      applyStateToDB(data2.state||{});
+      const r2 = await fetch(api + "?mode=state&token=" + encodeURIComponent(token), {cache:"no-store"}); if (!r2.ok) throw new Error("state HTTP " + r2.status);
+      const data2 = await r2.json(); applyStateToDB(data2.state||{});
     }
-    save(); rebuildTagDropdowns(); renderManager();
-    updateStats(`API loaded. Cards + State`);
-  } catch(err){
-    alert("API load failed: " + err.message);
-  }
+    save(); rebuildTagDropdowns(); renderManager(); updateStats(`API loaded. Cards + State`);
+  } catch(err){ alert("API load failed: " + err.message); }
 }
-
-// --- save state to API (debounced)
 let saveTimer = null;
 function apiSaveStateDebounced(){
-  const api = apiUrlEl.value.trim();
-  const token = apiTokenEl.value.trim();
-  if (!api || !token) return;
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(async ()=>{
-    try{
-      const payload = { token, state: stateFromDB() };
-      const r = await fetch(api, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
-      });
-    } catch(_){}
-  }, 500);
+  const api = apiUrlEl.value.trim(); const token = apiTokenEl.value.trim();
+  if (!api || !token) return; if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{ try{ const payload = { token, state: stateFromDB() }; await fetch(api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});}catch(_){ } }, 500);
 }
+document.getElementById("btnApiLoad").onclick = apiLoadAll;
 
 /* ---------- UI bindings ---------- */
 document.getElementById("start").onclick = () => { buildQueue(); nextCard(); };
 document.getElementById("end").onclick = () => {
   session.queue=[]; session.index=-1; session.current=null; updateStats("Ended");
-  document.getElementById("prompt").textContent="—"; document.getElementById("answer").disabled=true;
-  document.getElementById("slots").style.display = "none";
+  document.getElementById("prompt").textContent="—"; document.getElementById("answer").disabled=true; document.getElementById("slots").style.display="none";
 };
 document.getElementById("reveal").onclick = () => {
   if (!session.current) return;
@@ -895,69 +725,41 @@ document.getElementById("showHint").onclick = () => {
 };
 document.getElementById("markAgain").onclick = () => {
   if (!session.current) return;
-  session.current.again=(session.current.again||0)+1;
-  session.current.seen=(session.current.seen||0)+1;
-  save();
-  apiSaveStateDebounced();
-  feedback(`Marked Again`, "bad", `<div class="small">Press <b>Space</b> for next.</div>`);
-  holdForSpace = true;
+  session.current.again=(session.current.again||0)+1; session.current.seen=(session.current.seen||0)+1; save(); apiSaveStateDebounced();
+  feedback(`Marked Again`, "bad", `<div class="small">Press <b>Space</b> for next.</div>`); holdForSpace = true;
 };
 document.getElementById("markGood").onclick = () => {
   if (!session.current) return;
-  session.current.good=(session.current.good||0)+1;
-  session.current.seen=(session.current.seen||0)+1;
-  save();
-  apiSaveStateDebounced();
-  feedback(`Marked Good`, "good", `<div class="small">Press <b>Space</b> for next.</div>`);
-  holdForSpace = true;
+  session.current.good=(session.current.good||0)+1; session.current.seen=(session.current.seen||0)+1; save(); apiSaveStateDebounced();
+  feedback(`Marked Good`, "good", `<div class="small">Press <b>Space</b> for next.</div>`); holdForSpace = true;
 };
 document.getElementById("answer").addEventListener("keydown", e=>{
-  // TAB => Reveal (don’t move focus)
-  if (e.key === "Tab"){
-    e.preventDefault();
-    document.getElementById("reveal").click();
-    return;
-  }
-  // ENTER => Check
-  if (e.key === "Enter"){
-    e.preventDefault();
-    checkAnswer();
-  }
+  if (e.key === "Tab"){ e.preventDefault(); document.getElementById("reveal").click(); return; }
+  if (e.key === "Enter"){ e.preventDefault(); checkAnswer(); }
 });
 document.getElementById("answer").addEventListener("input", ()=>{
   if (!session.current) return;
-  const target = slotTargetForCurrentCard();
-  const typed  = document.getElementById("answer").value;
-  renderSlots(target, typed);
+  renderSlots(slotTargetForCurrentCard(), document.getElementById("answer").value);
 });
 slotSel.addEventListener("change", ()=>{
   if (!session.current) return;
   renderSlots(slotTargetForCurrentCard(), document.getElementById("answer").value);
+  updateAnswerVisibilityForSlots();
 });
+document.getElementById("slots").addEventListener("click", ()=>{ document.getElementById("answer").focus(); });
 
 // Global shortcuts (character-based Y; don’t steal focus from typing)
 document.addEventListener("keydown", e=>{
-  // SPACE => next
-  if (holdForSpace && e.code === "Space"){
-    e.preventDefault();
-    holdForSpace = false;
-    nextCard();
-    return;
-  }
-  // Y => Reveal (only when not typing in the input)
+  if (holdForSpace && e.code === "Space"){ e.preventDefault(); holdForSpace=false; nextCard(); return; }
   if ((e.key === "y" || e.key === "Y") && !e.ctrlKey && !e.metaKey && !e.altKey){
     if (document.activeElement === document.getElementById("answer")) return;
-    e.preventDefault();
-    document.getElementById("reveal").click();
+    e.preventDefault(); document.getElementById("reveal").click();
   }
 });
 
 /* ---------- init ---------- */
-updateStats();
-rebuildTagDropdowns();
-renderManager();
-bindManagerEvents();
-showTagsUsed();
+updateStats(); rebuildTagDropdowns(); renderManager(); bindManagerEvents(); showTagsUsed();
+updateAnswerVisibilityForSlots();
 </script>
 </body>
 </html>
