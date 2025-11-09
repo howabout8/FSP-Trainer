@@ -309,6 +309,12 @@ function splitSynonymsModeAware(s, mode){
   // synonyms: split on /, |, ,
   return s.split(/\s*(?:\/|\||,)\s*/).map(x=>x.trim()).filter(Boolean);
 }
+function retryNow(){
+  if (!session.current) return;
+  holdForSpace = false;                 // we’re not waiting for Space anymore
+  setPrompt(session.current);           // re-show the same card, cleared input
+  feedback(`<span class="muted">Retry this card.</span>`, "", "");
+}
 function expandSynonyms(raw){
   const base = splitSynonymsModeAware(raw, (session?.slashMode || slashSel.value || "synonyms"));
   const expanded = [];
@@ -580,7 +586,7 @@ function checkAnswer(){
          <div class="label">Expected</div>
          <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
         "good",
-        `<div class="small">Practice mode — not saved. Press <b>Space</b> for next.</div>`
+        `<div class="small">Press <b>Delete</b> to retry now, or <b>Space</b> for next.</div>`
       );
     } else {
       // Letter-level red/green diff
@@ -591,7 +597,7 @@ function checkAnswer(){
          <div class="label">Expected</div>
          <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
         "bad",
-        `<div class="small">Practice mode — not saved. Press <b>Space</b> for next.</div>`
+        `<div class="small">Practice mode — not saved. Press <b>Delete</b> to retry now, or <b>Space</b> for next.</div>`
       );
     }
   
@@ -818,13 +824,35 @@ document.getElementById("slots").addEventListener("click", ()=>{ document.getEle
 
 // Global shortcuts (character-based Y; don’t steal focus from typing)
 document.addEventListener("keydown", e=>{
-  if (holdForSpace && e.code === "Space"){ e.preventDefault(); holdForSpace=false; nextCard(); return; }
+  // SPACE => next (only when we're holding after reveal/correct/wrong)
+  if (holdForSpace && e.code === "Space"){
+    e.preventDefault();
+    holdForSpace = false;
+    nextCard();
+    return;
+  }
+
+  // DELETE => instant retry of the same card (only when we're holding after feedback)
+  if (holdForSpace && (e.key === "Delete" || e.code === "Delete")){
+    e.preventDefault();
+    retryNow();
+    return;
+  }
+
+  // Optional extra: '#' as a backup retry key (you mentioned it)
+  if (holdForSpace && e.key === "#"){
+    e.preventDefault();
+    retryNow();
+    return;
+  }
+
+  // Y => Reveal (only if the answer box is not actively being typed in)
   if ((e.key === "y" || e.key === "Y") && !e.ctrlKey && !e.metaKey && !e.altKey){
-    if (document.activeElement === document.getElementById("answer")) return;
-    e.preventDefault(); document.getElementById("reveal").click();
+    if (document.activeElement === document.getElementById("answer")) return; // let you type 'y'
+    e.preventDefault();
+    document.getElementById("reveal").click();
   }
 });
-
 /* ---------- init ---------- */
 updateStats(); rebuildTagDropdowns(); renderManager(); bindManagerEvents(); showTagsUsed();
 updateAnswerVisibilityForSlots();
