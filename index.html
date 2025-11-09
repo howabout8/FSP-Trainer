@@ -132,6 +132,13 @@
           </select>
         </div>
         <div style="max-width:220px;width:100%;">
+          <label>Mode</label>
+          <select id="modeSelect" title="Practice = no grading, no saves">
+            <option value="train">Training (grade & save)</option>
+            <option value="test">Practice (no grading)</option>
+          </select>
+        </div>
+        <div style="max-width:220px;width:100%;">
           <label>Practice aid</label>
           <select id="slotToggle">
             <option value="off">Letter slots: Off</option>
@@ -241,6 +248,11 @@ const LS_AUTO_SYNC = "fsp_trainer_auto_sync";
 const LS_ARTICLE_MODE = "fsp_article_mode";
 const LS_SLASH_MODE   = "fsp_slash_mode";
 const LS_SLOT_TOGGLE  = "fsp_slot_toggle";
+const LS_MODE        = "fsp_mode";
+const modeSel        = document.getElementById("modeSelect");
+
+modeSel.value = localStorage.getItem(LS_MODE) || "train";
+modeSel.onchange = ()=> localStorage.setItem(LS_MODE, modeSel.value);
 
 const articleSel = document.getElementById("articleMode");
 const slashSel   = document.getElementById("slashMode");
@@ -496,7 +508,7 @@ function updateAnswerVisibilityForSlots(){
 /* ---------- Trainer ---------- */
 function buildQueue(){
   const tags = getSelectedTags(); const dir=document.getElementById("direction").value; const n=parseInt(document.getElementById("sessionSize").value||"50",10);
-  session.direction=dir; session.size=n; session.tags=tags; session.caseMode=document.getElementById("caseMode").value; session.articleMode=articleSel.value; session.slashMode=slashSel.value;
+  session.direction=dir; session.size=n; session.tags=tags; session.caseMode=document.getElementById("caseMode").value; session.articleMode=articleSel.value; session.slashMode=slashSel.value; session.mode = modeSel.value;
   let pool = db.items.slice();
   if (tags.length){ pool = pool.filter(it => (it.tags||[]).some(t => tags.includes(t))); }
   if (!pool.length){ session.queue=[]; session.index=-1; updateStats("No items match your filter yet."); return; }
@@ -550,10 +562,30 @@ function feedback(msg, cls, sub){
 }
 function checkAnswer(){
   const it = session.current; if (!it) return;
-  const user = document.getElementById("answer").value;
+
+  const user  = document.getElementById("answer").value;
   const expRaw = (session.direction==="de-en") ? it.back : it.front;
+
+  // -------- PRACTICE (TEST) MODE --------
+  if (session.mode === "test"){
+    // No grading, no counters, no save, just show what you typed + the expected
+    feedback(
+      `<div class="answer-big">${escapeHtml(user || " ")}</div>
+       <div class="small muted" style="margin-top:6px;">Practice mode — no grading, no saving</div>
+       <div class="label">Expected</div>
+       <div class="answer-big"><b>${escapeHtml(expRaw)}</b></div>`,
+      "",
+      `<div class="small">Press <b>Space</b> for next.</div>`
+    );
+    holdForSpace = true;
+    return;
+  }
+
+  // -------- TRAINING MODE (as before) --------
   const ok = isCorrect(user, expRaw);
-  it.seen = (it.seen||0) + 1; it.last = Date.now();
+  it.seen = (it.seen||0) + 1;
+  it.last = Date.now();
+
   if (ok){
     it.good = (it.good||0) + 1;
     feedback(
@@ -562,7 +594,6 @@ function checkAnswer(){
       "good",
       `<div class="small">Press <b>Space</b> for next.</div>`
     );
-    save(); apiSaveStateDebounced(); holdForSpace = true;
   } else {
     it.again = (it.again||0) + 1;
     const expDisplay = expRaw.replace(/\([^)]*\)/g,"").trim();
@@ -576,8 +607,11 @@ function checkAnswer(){
       "bad",
       `<div class="small">Press <b>Space</b> for next.</div>`
     );
-    save(); apiSaveStateDebounced(); holdForSpace = true;
   }
+
+  save();
+  apiSaveStateDebounced();
+  holdForSpace = true;
 }
 
 /* ---------- Cards Manager ---------- */
@@ -736,6 +770,20 @@ document.getElementById("markGood").onclick = () => {
 document.getElementById("answer").addEventListener("keydown", e=>{
   if (e.key === "Tab"){ e.preventDefault(); document.getElementById("reveal").click(); return; }
   if (e.key === "Enter"){ e.preventDefault(); checkAnswer(); }
+  if (e.key === "Enter"){
+  e.preventDefault();
+  if (modeSel.value === "test"){
+    // Option A (default): show what you typed + expected, then Space to continue
+    checkAnswer();
+
+    // Option B (instant advance): uncomment next 2 lines and remove checkAnswer() above
+    // nextCard();
+    // return;
+
+  } else {
+    checkAnswer();
+  }
+}
 });
 document.getElementById("answer").addEventListener("input", ()=>{
   if (!session.current) return;
