@@ -534,9 +534,7 @@ function firstVariant(text){
 }
 function stripArticleIfNeeded(str){
   if (!str) return "";
-  const articleRx = /^(der|die|das|den|dem|des)\s+/i;
-  if (session.articleMode === "ignore") return str.replace(articleRx,"").trim();
-  return str;
+  return str; // always keep article visually for slots
 }
 function slotTargetForCurrentCard(){
   if (!session.current) return "";
@@ -1024,31 +1022,34 @@ document.getElementById("slots").addEventListener("click", ()=>{
   document.getElementById("answer").focus();
 });
 
-// Global shortcuts
+
+// Global shortcuts (FIXED SAFE VERSION)
 document.addEventListener("keydown", e=>{
-  // Space => next ONLY when holding after feedback/reveal
-  if (holdForSpace && e.code === "Space"){
+
+  const answerInput = document.getElementById("answer");
+  const typing = (document.activeElement === answerInput);
+
+  // Space → next ONLY if we are in feedback state AND not typing
+  if (holdForSpace && e.code === "Space" && !typing){
     e.preventDefault();
     holdForSpace = false;
     nextCard();
     return;
   }
 
-  // Delete => retry same card (only after feedback)
+  // Delete → retry same card (only after feedback)
   if (holdForSpace && (e.key === "Delete" || e.code === "Delete")){
     e.preventDefault();
     retryNow();
     return;
   }
 
-  // Y => reveal only when not actively typing in the answer input
-  if ((e.key === "y" || e.key === "Y") && !e.ctrlKey && !e.metaKey && !e.altKey){
-    if (document.activeElement === document.getElementById("answer")) return;
+  // Y → reveal only when not typing
+  if ((e.key === "y" || e.key === "Y") && !typing){
     e.preventDefault();
     document.getElementById("reveal").click();
   }
 });
-
 /* ---------- init ---------- */
 updateStats();
 rebuildTagDropdowns();
