@@ -24,7 +24,7 @@
   .muted{color:var(--muted)} .small{font-size:12px}
   .stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
   .tag{display:inline-block;background:#132035;color:#9cc1ff;border:1px solid #263a66;border-radius:999px;padding:3px 8px;margin:2px;font-size:12px}
-  .controls{display:flex;gap:12px;justify-content:center;margin-top:14px}
+  .controls{display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap}
   .controls button{min-width:120px;padding:12px 14px;border-radius:12px}
   .section-title{font-size:16px;color:var(--muted);margin:18px 0 6px}
   code{background:#0b1220;padding:2px 6px;border-radius:6px;border:1px solid #1f2937}
@@ -34,8 +34,8 @@
   th{color:#cbd5e1;text-align:left;font-weight:600}
   td.actions{white-space:nowrap}
   .btn-small{padding:8px 10px;border-radius:10px;font-size:14px}
-  .toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0 12px}
-  .toolbar .left, .toolbar .right{display:flex;gap:10px;align-items:center}
+  .toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:8px 0 12px;flex-wrap:wrap}
+  .toolbar .left, .toolbar .right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .search{max-width:320px}
 
   /* Diff highlighting */
@@ -75,8 +75,8 @@
       <div class="stats small muted" id="stats">No items yet.</div>
       <div class="spacer"></div>
       <div class="prompt" id="prompt">—</div>
-      <input id="answer" placeholder="Type your answer and press Enter (Space = next)" disabled />
-      <!-- Letter slots row (toggleable & acts as main input UI) -->
+
+      <input id="answer" placeholder="Type your answer and press Enter (Space = next after feedback)" disabled />
       <div id="slots" class="slotRow" style="display:none;"></div>
 
       <div class="controls">
@@ -85,7 +85,9 @@
         <button id="markAgain">Again</button>
         <button id="markGood" class="primary">Good</button>
       </div>
+
       <div id="feedback" class="feedback muted">Load items and click Start.</div>
+
       <div class="controls">
         <button id="start" class="primary">Start Session</button>
         <button id="end">End Session</button>
@@ -99,6 +101,7 @@
             <option value="">— All tags —</option>
           </select>
         </div>
+
         <div style="max-width:180px;width:100%;">
           <label>Direction</label>
           <select id="direction">
@@ -106,10 +109,12 @@
             <option value="en-de">English → German</option>
           </select>
         </div>
+
         <div style="max-width:160px;width:100%;">
           <label>Session size</label>
           <input id="sessionSize" type="number" min="1" value="50" />
         </div>
+
         <div style="max-width:220px;width:100%;">
           <label>Case sensitivity</label>
           <select id="caseMode">
@@ -117,6 +122,7 @@
             <option value="strict">Strict</option>
           </select>
         </div>
+
         <div style="max-width:220px;width:100%;">
           <label>Article check</label>
           <select id="articleMode">
@@ -124,6 +130,7 @@
             <option value="require">Require correct article</option>
           </select>
         </div>
+
         <div style="max-width:220px;width:100%;">
           <label>Slash handling</label>
           <select id="slashMode">
@@ -131,13 +138,15 @@
             <option value="literal">"/" is literal text</option>
           </select>
         </div>
+
         <div style="max-width:220px;width:100%;">
           <label>Mode</label>
-          <select id="modeSelect" title="Practice = no grading, no saves">
+          <select id="modeSelect" title="Practice = shows grading but does not save">
             <option value="train">Training (grade & save)</option>
-            <option value="test">Practice (no grading)</option>
+            <option value="test">Practice (grade but don’t save)</option>
           </select>
         </div>
+
         <div style="max-width:220px;width:100%;">
           <label>Practice aid</label>
           <select id="slotToggle">
@@ -148,6 +157,9 @@
       </div>
 
       <div id="tagsUsed" class="small" style="text-align:center;margin-top:8px;"></div>
+      <div class="small muted" style="text-align:center;margin-top:8px;">
+        Shortcuts: <b>Tab</b>=Reveal • <b>Delete</b>=Retry (after feedback) • <b>Space</b>=Next (after feedback)
+      </div>
     </div>
 
     <!-- CLOUD SYNC -->
@@ -170,10 +182,11 @@
         </div>
       </div>
       <p class="small muted" style="margin-top:8px;">
-        <b>CSV/TSV (public):</b> File → Share → Publish to the web → select your tab → CSV → copy link.  
+        <b>CSV/TSV (public):</b> File → Share → Publish to the web → select your tab → CSV → copy link.
         <b>JSON (private):</b> Use the Apps Script snippet above, deploy as web app (Anyone with link), paste URL here.
       </p>
     </div>
+
     <div class="card" style="margin-top:18px;">
       <div class="section-title">Online state (central cards & progress via Apps Script)</div>
       <div class="row">
@@ -196,7 +209,7 @@
     <div class="card" style="margin-top:18px;">
       <div class="section-title">Import / Export (manual)</div>
       <label>Paste items (one per line): <span class="muted">Format: <code>German;English;tags</code> (TAB also ok). Synonyms with <code>/</code>, <code>|</code>, <code>,</code>. Bracket hints like <code>(- n)</code> ignored. “X of Y” also accepts just <code>X</code>.</span></label>
-      <textarea id="bulk" rows="8" placeholder="nape/neck;	der Nacken&#10;shoulder;	die Schulter (- n)&#10;buttocks;	der Hintern, Po&#10;sole of foot;	die Fußsohle (- n)"></textarea>
+      <textarea id="bulk" rows="8" placeholder="nape/neck; der Nacken&#10;shoulder; die Schulter (- n)&#10;buttocks; der Hintern, Po"></textarea>
       <div class="row" style="margin-top:10px;">
         <div><button id="btnImport" class="primary">+ Import / Merge</button></div>
         <div class="row" style="flex:1">
@@ -244,30 +257,30 @@ const LEGACY_KEYS = ["fsp_trainer_v4","fsp_trainer_v3","fsp_trainer_v2","fsp_tra
 const LS_SHEET_URL = "fsp_trainer_sheet_url";
 const LS_AUTO_SYNC = "fsp_trainer_auto_sync";
 
-// User prefs
+/* User prefs */
 const LS_ARTICLE_MODE = "fsp_article_mode";
 const LS_SLASH_MODE   = "fsp_slash_mode";
 const LS_SLOT_TOGGLE  = "fsp_slot_toggle";
-const LS_MODE        = "fsp_mode";
-const modeSel        = document.getElementById("modeSelect");
-
-modeSel.value = localStorage.getItem(LS_MODE) || "train";
-modeSel.onchange = ()=> localStorage.setItem(LS_MODE, modeSel.value);
+const LS_MODE         = "fsp_mode";
 
 const articleSel = document.getElementById("articleMode");
 const slashSel   = document.getElementById("slashMode");
 const slotSel    = document.getElementById("slotToggle");
+const modeSel    = document.getElementById("modeSelect");
 
 articleSel.value = localStorage.getItem(LS_ARTICLE_MODE) || "ignore";
 slashSel.value   = localStorage.getItem(LS_SLASH_MODE)   || "synonyms";
 slotSel.value    = localStorage.getItem(LS_SLOT_TOGGLE)  || "off";
+modeSel.value    = localStorage.getItem(LS_MODE)         || "train";
 
 articleSel.onchange = ()=> localStorage.setItem(LS_ARTICLE_MODE, articleSel.value);
-slashSel.onchange   = ()=> localStorage.setItem(LS_SLASH_MODE,   slashSel.value);
-slotSel.onchange    = ()=> localStorage.setItem(LS_SLOT_TOGGLE,  slotSel.value);
+slashSel.onchange   = ()=> localStorage.setItem(LS_SLASH_MODE, slashSel.value);
+slotSel.onchange    = ()=> localStorage.setItem(LS_SLOT_TOGGLE, slotSel.value);
+modeSel.onchange    = ()=> localStorage.setItem(LS_MODE, modeSel.value);
 
 let holdForSpace = false;
 
+/* ---------- DB ---------- */
 function loadDB(){
   let db = JSON.parse(localStorage.getItem(LS_KEY) || "null");
   if (!db){
@@ -286,7 +299,7 @@ function loadDB(){
 let db = loadDB();
 function save(){ localStorage.setItem(LS_KEY, JSON.stringify(db)); }
 
-/* ---------- Norm & parsing ---------- */
+/* ---------- utils ---------- */
 const escapeHtml = (s) => (s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
 const norm = (s, caseMode="ignore") => {
   if (!s) return "";
@@ -300,31 +313,6 @@ const norm = (s, caseMode="ignore") => {
   return t.replace(/\s{2,}/g," ").trim();
 };
 
-// Synonyms splitting (mode-aware)
-function splitSynonymsModeAware(s, mode){
-  if (mode === "literal"){
-    // keep '/' literal; split only on | and ,
-    return s.split(/\s*(?:\||,)\s*/).map(x=>x.trim()).filter(Boolean);
-  }
-  // synonyms: split on /, |, ,
-  return s.split(/\s*(?:\/|\||,)\s*/).map(x=>x.trim()).filter(Boolean);
-}
-function retryNow(){
-  if (!session.current) return;
-  holdForSpace = false;                 // we’re not waiting for Space anymore
-  setPrompt(session.current);           // re-show the same card, cleared input
-  feedback(`<span class="muted">Retry this card.</span>`, "", "");
-}
-function expandSynonyms(raw){
-  const base = splitSynonymsModeAware(raw, (session?.slashMode || slashSel.value || "synonyms"));
-  const expanded = [];
-  for (const syn of base){
-    expanded.push(syn);
-    const m = syn.match(/^(.+?)\s+of\s+.+$/i);
-    if (m && m[1]) expanded.push(m[1].trim());
-  }
-  return Array.from(new Set(expanded));
-}
 function parseLine(line){
   let parts = line.split(";");
   if (parts.length < 2) parts = line.split("\t");
@@ -336,7 +324,7 @@ function parseLine(line){
   return {front, back, tags};
 }
 
-/* ---------- CSV/TSV parsing ---------- */
+/* ---------- CSV/TSV parser ---------- */
 function parseDelimited(text){
   const isTSV = (text.indexOf("\t") > -1) && (text.split("\n")[0].split("\t").length >= 2);
   const delim = isTSV ? "\t" : ",";
@@ -350,16 +338,13 @@ function parseDelimited(text){
       if (c === '"'){
         if (text[i] === '"'){ field += '"'; i++; }
         else { inQuotes = false; }
-      } else { field += c; }
+      } else field += c;
     } else {
-      if (c === '"'){ inQuotes = true; }
-      else if (c === delim){ pushField(); }
-      else if (c === "\n"){
-        if (prev === "\r"){ /* ignore CRLF */ }
-        pushField(); pushRow();
-      } else if (c === "\r"){
-        pushField(); pushRow();
-      } else { field += c; }
+      if (c === '"') inQuotes = true;
+      else if (c === delim) pushField();
+      else if (c === "\n"){ if (prev !== "\r"){ pushField(); pushRow(); } }
+      else if (c === "\r"){ pushField(); pushRow(); }
+      else field += c;
     }
     prev = c;
   }
@@ -368,8 +353,13 @@ function parseDelimited(text){
   return rows;
 }
 
-/* ---------- Trainer state ---------- */
-let session = { queue:[], index:-1, current:null, size:50, direction:"de-en", caseMode:"ignore", articleMode:articleSel.value, slashMode:slashSel.value, tags:[] };
+/* ---------- session ---------- */
+let session = {
+  queue:[], index:-1, current:null,
+  size:50, direction:"de-en", tags:[],
+  caseMode:"ignore", articleMode:articleSel.value, slashMode:slashSel.value,
+  mode: modeSel.value
+};
 
 function updateStats(extra=""){
   const total = db.items.length;
@@ -383,17 +373,41 @@ function updateStats(extra=""){
      <span class="pill">Again: ${again}</span>
      ${extra? `<span class="pill">${escapeHtml(extra)}</span>`:""}`;
 }
+
 function showTagsUsed(){
   const unique = new Set();
   session.queue.forEach(it => (it.tags||[]).forEach(t=>unique.add(t)));
   document.getElementById("tagsUsed").innerHTML =
-    "Tags in session: " + (unique.size? Array.from(unique).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("") : "<span class='muted'>—</span>");
+    "Tags in session: " + (unique.size
+      ? Array.from(unique).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join("")
+      : "<span class='muted'>—</span>");
 }
+
 function getSelectedTags(){
   const sel = document.getElementById("tagDropdown");
   const chosen = Array.from(sel.options).filter(o => o.selected && o.value);
   return chosen.map(o => o.value);
 }
+
+/* ---------- synonyms ---------- */
+function splitSynonymsModeAware(s, mode){
+  if (mode === "literal"){
+    return String(s).split(/\s*(?:\||,)\s*/).map(x=>x.trim()).filter(Boolean);
+  }
+  return String(s).split(/\s*(?:\/|\||,)\s*/).map(x=>x.trim()).filter(Boolean);
+}
+function expandSynonyms(raw){
+  const base = splitSynonymsModeAware(raw, (session.slashMode || "synonyms"));
+  const expanded = [];
+  for (const syn of base){
+    expanded.push(syn);
+    const m = syn.match(/^(.+?)\s+of\s+.+$/i);
+    if (m && m[1]) expanded.push(m[1].trim());
+  }
+  return Array.from(new Set(expanded));
+}
+
+/* ---------- diff ---------- */
 function normVisChar(ch){
   return ch.toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss");
 }
@@ -402,7 +416,9 @@ function charDiff(expected, typed){
   const ca = a.map(normVisChar), cb = b.map(normVisChar);
   const n=a.length, m=b.length;
   const dp = Array.from({length:n+1},()=>Array(m+1).fill(0));
-  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--) dp[i][j] = (ca[i]===cb[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
+  for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--)
+    dp[i][j] = (ca[i]===cb[j]) ? 1+dp[i+1][j+1] : Math.max(dp[i+1][j], dp[i][j+1]);
+
   let i=0,j=0, outExp=[], outTyp=[];
   while (i<n && j<m){
     if (ca[i]===cb[j]){ outExp.push({ch:a[i], cls:'ok-ch'}); outTyp.push({ch:b[j], cls:'ok-ch'}); i++; j++; }
@@ -411,135 +427,83 @@ function charDiff(expected, typed){
   }
   while (i<n){ outExp.push({ch:a[i], cls:'miss-ch'}); i++; }
   while (j<m){ outTyp.push({ch:b[j], cls:'extra-ch'}); j++; }
+
   const span = arr => arr.map(x => x.cls ? `<span class="${x.cls}">${escapeHtml(x.ch)}</span>` : escapeHtml(x.ch)).join('');
   return { expectedHTML: span(outExp), typedHTML: span(outTyp) };
 }
+
+/* ---------- tags dropdowns ---------- */
 function rebuildTagDropdowns(){
   const allTags = Array.from(new Set(db.items.flatMap(it => it.tags||[]))).sort((a,b)=>a.localeCompare(b,'de'));
+
   const dd = document.getElementById("tagDropdown");
   const selected = new Set(Array.from(dd?.options||[]).filter(o=>o.selected && o.value).map(o=>o.value));
   dd.innerHTML = `<option value="">— All tags —</option>`;
-  for (const t of allTags){ const o=document.createElement("option"); o.value=t; o.textContent=t; if (selected.has(t)) o.selected=true; dd.appendChild(o); }
-  const mgr = document.getElementById("mgrTagFilter"); const cur=mgr.value;
+  for (const t of allTags){
+    const o=document.createElement("option");
+    o.value=t; o.textContent=t;
+    if (selected.has(t)) o.selected=true;
+    dd.appendChild(o);
+  }
+
+  const mgr = document.getElementById("mgrTagFilter");
+  const cur=mgr.value;
   mgr.innerHTML = `<option value="">— All tags —</option>`;
-  for (const t of allTags){ const o=document.createElement("option"); o.value=t; o.textContent=t; mgr.appendChild(o); }
+  for (const t of allTags){
+    const o=document.createElement("option");
+    o.value=t; o.textContent=t;
+    mgr.appendChild(o);
+  }
   if ([...mgr.options].some(o=>o.value===cur)) mgr.value = cur;
 }
 
-/* ---------- Import / Export / Clear ---------- */
+/* ---------- upsert ---------- */
+function upsertItem(rec){
+  const idx = db.items.findIndex(it => norm(it.front)===norm(rec.front) && norm(it.back)===norm(rec.back));
+  if (idx>=0){
+    const it=db.items[idx];
+    const tagset=new Set([...(it.tags||[]), ...((rec.tags||[]))]);
+    db.items[idx] = {...it, front:rec.front, back:rec.back, tags:[...tagset]};
+    return true;
+  }
+  db.items.push({ id:Math.random().toString(36).slice(2,10), front:rec.front, back:rec.back, tags:rec.tags||[], seen:0, good:0, again:0, last:0 });
+  return false;
+}
+
+/* ---------- import/export/clear ---------- */
 document.getElementById("btnImport").onclick = () => {
-  const txt = document.getElementById("bulk").value; let added=0, updated=0;
-  txt.split(/\n/).map(l=>l.trim()).filter(Boolean).forEach(line=>{ const rec=parseLine(line); if (!rec) return; upsertItem(rec) ? updated++ : added++; });
-  save(); updateStats(`Imported. Added ${added}, updated ${updated}.`); rebuildTagDropdowns(); renderManager();
+  const txt = document.getElementById("bulk").value;
+  let added=0, updated=0;
+  txt.split(/\n/).map(l=>l.trim()).filter(Boolean).forEach(line=>{
+    const rec=parseLine(line);
+    if (!rec) return;
+    upsertItem(rec) ? updated++ : added++;
+  });
+  save(); updateStats(`Imported. Added ${added}, updated ${updated}.`);
+  rebuildTagDropdowns(); renderManager();
 };
 document.getElementById("btnExport").onclick = () => {
   const blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fsp_trainer_data.json"; a.click();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "fsp_trainer_data.json";
+  a.click();
 };
 document.getElementById("btnClear").onclick = () => {
   if (!confirm("Clear ALL saved items and stats? This cannot be undone.")) return;
-  db = {items:[]}; save(); updateStats("Cleared"); rebuildTagDropdowns(); renderManager();
+  db = {items:[]};
+  save(); updateStats("Cleared");
+  rebuildTagDropdowns(); renderManager();
 };
 
-/* ---------- Upsert helper ---------- */
-function upsertItem(rec){
-  const idx = db.items.findIndex(it => norm(it.front)===norm(rec.front) && norm(it.back)===norm(rec.back));
-  if (idx>=0){ const it=db.items[idx]; const tagset=new Set([...(it.tags||[]), ...((rec.tags||[]))]); db.items[idx] = {...it, front:rec.front, back:rec.back, tags:[...tagset]}; return true; }
-  db.items.push({ id:Math.random().toString(36).slice(2,10), front:rec.front, back:rec.back, tags:rec.tags||[], seen:0, good:0, again:0, last:0 }); return false;
+/* ---------- feedback helper ---------- */
+function feedback(msg, cls, sub){
+  const el = document.getElementById("feedback");
+  el.className = "feedback " + (cls||"");
+  el.innerHTML = msg + (sub? `<div class="muted">${sub}</div>`:"");
 }
 
-/* ---------- Cloud Sync ---------- */
-const sheetUrlInput = document.getElementById("sheetUrl");
-const autoSyncSel = document.getElementById("autoSync");
-sheetUrlInput.value = localStorage.getItem(LS_SHEET_URL) || "";
-autoSyncSel.value = localStorage.getItem(LS_AUTO_SYNC) || "off";
-autoSyncSel.onchange = ()=> localStorage.setItem(LS_AUTO_SYNC, autoSyncSel.value);
-sheetUrlInput.onchange = ()=> localStorage.setItem(LS_SHEET_URL, sheetUrlInput.value.trim());
-document.getElementById("btnSync").onclick = async () => {
-  const url = (sheetUrlInput.value||"").trim(); if (!url){ alert("Please paste your Sheet URL first."); return; }
-  try{
-    const res = await fetch(url, {cache:"no-store"}); if (!res.ok) throw new Error("HTTP "+res.status);
-    const ct = (res.headers.get("content-type")||"").toLowerCase(); let added=0, updated=0;
-    if (ct.includes("application/json")){
-      const data = await res.json();
-      const items = (data.items||[]).map(x => ({ front:String(x.front||"").trim(), back:String(x.back||"").trim(), tags:String(x.tags||"").split(/[,\s]+/).filter(Boolean) })).filter(x=>x.front && x.back);
-      for (const it of items){ upsertItem(it) ? updated++ : added++; }
-    } else {
-      const text = await res.text(); const rows = parseDelimited(text); if (!rows.length) throw new Error("No rows found");
-      const header = rows[0].map(h=>String(h||"").trim().toLowerCase()); let start = 0, cFront=0, cBack=1, cTags=2;
-      if (header.includes("front") && header.includes("back")){ cFront=header.indexOf("front"); cBack=header.indexOf("back"); cTags=header.indexOf("tags"); start=1; }
-      for (let i=start;i<rows.length;i++){
-        const r = rows[i]; const front=String(r[cFront]||"").trim(); const back=String(r[cBack]||"").trim(); const tags=(cTags>=0 && r[cTags]) ? String(r[cTags]).split(/[,\s]+/).filter(Boolean) : [];
-        if (!front || !back) continue; upsertItem({front,back,tags}) ? updated++ : added++;
-      }
-    }
-    save(); updateStats(`Synced. Added ${added}, updated ${updated}.`); rebuildTagDropdowns(); renderManager();
-  } catch(err){ alert("Sync failed: " + err.message + "\nTip: For CSV, use 'Publish to the web' link, or use the JSON Apps Script option."); }
-};
-window.addEventListener("load", async ()=>{ if (autoSyncSel.value === "on" && sheetUrlInput.value.trim()){ document.getElementById("btnSync").click(); }});
-
-/* ---------- Letter slots helpers ---------- */
-function firstVariant(text){
-  const mode = session?.slashMode || slashSel.value || "synonyms";
-  if (mode === "literal"){ return String(text).split(/\s*(?:\||,)\s*/)[0] || ""; }
-  return String(text).split(/\s*(?:\/|\||,)\s*/)[0] || "";
-}
-function stripArticleIfNeeded(str){
-  if (!str) return ""; const articleRx = /^(der|die|das|den|dem|des)\s+/i;
-  if (session?.articleMode === "ignore"){ return str.replace(articleRx,"").trim(); }
-  return str;
-}
-function slotTargetForCurrentCard(){
-  if (!session.current) return "";
-  const raw = (session.direction==="de-en") ? session.current.back : session.current.front;
-  let core = raw.replace(/\([^)]*\)/g,"").trim(); core = firstVariant(core); core = stripArticleIfNeeded(core); return core;
-}
-function renderSlots(target, typed){
-  const host = document.getElementById("slots");
-  const on = (slotSel.value === "on");
-  if (!on || !target){ host.style.display="none"; host.innerHTML=""; return; }
-  host.style.display="flex";
-  const tChars = Array.from(target), uChars = Array.from(typed||"");
-  host.innerHTML = tChars.map((ch,i)=>{
-    if (ch === " ") return `<div class="slot space"></div>`;
-    const fill = uChars[i] || ""; const filled = fill ? ' filled' : '';
-    return `<div class="slot${filled}">${escapeHtml(fill)}</div>`;
-  }).join("");
-}
-function updateAnswerVisibilityForSlots(){
-  const ans = document.getElementById("answer");
-  if (slotSel.value === "on"){ ans.classList.add("slots-hidden"); } else { ans.classList.remove("slots-hidden"); }
-}
-
-/* ---------- Trainer ---------- */
-function buildQueue(){
-  const tags = getSelectedTags(); const dir=document.getElementById("direction").value; const n=parseInt(document.getElementById("sessionSize").value||"50",10);
-  session.direction=dir; session.size=n; session.tags=tags; session.caseMode=document.getElementById("caseMode").value; session.articleMode=articleSel.value; session.slashMode=slashSel.value; session.mode = modeSel.value;
-  let pool = db.items.slice();
-  if (tags.length){ pool = pool.filter(it => (it.tags||[]).some(t => tags.includes(t))); }
-  if (!pool.length){ session.queue=[]; session.index=-1; updateStats("No items match your filter yet."); return; }
-  const weighted=[]; for (const it of pool){ const w=1+(it.again||0)*2+Math.max(0,(it.seen||0)-(it.good||0))*0.5; const copies=Math.max(1,Math.min(20,Math.round(w))); for (let i=0;i<copies;i++) weighted.push(it); }
-  const picked=new Map(); while (picked.size<Math.min(n,pool.length) && weighted.length){ const idx=Math.floor(Math.random()*weighted.length); picked.set(weighted[idx].id, weighted[idx]); }
-  session.queue=Array.from(picked.values()); session.index=-1;
-}
-function setPrompt(it){
-  const prompt = (session.direction==="de-en") ? it.front : it.back;
-  document.getElementById("prompt").textContent = prompt;
-  const ans=document.getElementById("answer"); ans.value=""; ans.disabled=false; ans.focus();
-  document.getElementById("feedback").innerHTML = `<span class="muted">Type your answer and press Enter. Press <b>Space</b> to go to the next card.</span>`;
-  holdForSpace=false;
-  renderSlots(slotTargetForCurrentCard(), "");
-  updateAnswerVisibilityForSlots();
-}
-function nextCard(){
-  if (!session.queue.length){ updateStats("No items match your filter yet."); return; }
-  session.index++;
-  if (session.index >= session.queue.length){
-    updateStats("Session finished ✓"); document.getElementById("prompt").textContent="—"; document.getElementById("answer").disabled=true; document.getElementById("slots").style.display="none"; return;
-  }
-  session.current = session.queue[session.index];
-  setPrompt(session.current); showTagsUsed();
-}
+/* ---------- correctness ---------- */
 function normalizeTargets(raw){
   const ex = expandSynonyms(raw);
   return ex.map(t => norm(t, session.caseMode)).filter(Boolean);
@@ -548,9 +512,9 @@ function isCorrect(user, targetRaw){
   const userN = norm(user, session.caseMode);
   const targets = normalizeTargets(targetRaw);
   const articleRx = /^(der|die|das|den|dem|des)\s+/i;
+
   if (session.articleMode === "require"){
-    for (const t of targets){ if (userN === t) return true; }
-    return false;
+    return targets.some(t => userN === t);
   } else {
     const userNoArt = userN.replace(articleRx,"").trim();
     for (const t of targets){
@@ -561,35 +525,154 @@ function isCorrect(user, targetRaw){
     return false;
   }
 }
-function feedback(msg, cls, sub){
-  const el = document.getElementById("feedback");
-  el.className = "feedback " + (cls||"");
-  el.innerHTML = msg + (sub? `<div class="muted">${sub}</div>`:"");
+
+/* ---------- letter slots ---------- */
+function firstVariant(text){
+  const mode = session.slashMode || "synonyms";
+  if (mode === "literal") return String(text).split(/\s*(?:\||,)\s*/)[0] || "";
+  return String(text).split(/\s*(?:\/|\||,)\s*/)[0] || "";
 }
+function stripArticleIfNeeded(str){
+  if (!str) return "";
+  const articleRx = /^(der|die|das|den|dem|des)\s+/i;
+  if (session.articleMode === "ignore") return str.replace(articleRx,"").trim();
+  return str;
+}
+function slotTargetForCurrentCard(){
+  if (!session.current) return "";
+  const raw = (session.direction==="de-en") ? session.current.back : session.current.front;
+  let core = raw.replace(/\([^)]*\)/g,"").trim();
+  core = firstVariant(core);
+  core = stripArticleIfNeeded(core);
+  return core;
+}
+function renderSlots(target, typed){
+  const host = document.getElementById("slots");
+  const on = (slotSel.value === "on");
+  if (!on || !target){
+    host.style.display="none";
+    host.innerHTML="";
+    return;
+  }
+  host.style.display="flex";
+  const tChars = Array.from(target);
+  const uChars = Array.from(typed||"");
+  host.innerHTML = tChars.map((ch,i)=>{
+    if (ch === " ") return `<div class="slot space"></div>`;
+    const fill = uChars[i] || "";
+    const filled = fill ? " filled" : "";
+    return `<div class="slot${filled}">${escapeHtml(fill)}</div>`;
+  }).join("");
+}
+function updateAnswerVisibilityForSlots(){
+  const ans = document.getElementById("answer");
+  if (slotSel.value === "on") ans.classList.add("slots-hidden");
+  else ans.classList.remove("slots-hidden");
+}
+
+/* ---------- retry now ---------- */
+function retryNow(){
+  if (!session.current) return;
+  holdForSpace = false;
+  setPrompt(session.current);
+  feedback(`<span class="muted">Retry this card.</span>`, "", "");
+}
+
+/* ---------- trainer flow ---------- */
+function buildQueue(){
+  const tags = getSelectedTags();
+  const dir  = document.getElementById("direction").value;
+  const n    = parseInt(document.getElementById("sessionSize").value||"50",10);
+
+  session.direction  = dir;
+  session.size       = n;
+  session.tags       = tags;
+  session.caseMode   = document.getElementById("caseMode").value;
+  session.articleMode= articleSel.value;
+  session.slashMode  = slashSel.value;
+  session.mode       = modeSel.value;
+
+  let pool = db.items.slice();
+  if (tags.length){
+    pool = pool.filter(it => (it.tags||[]).some(t => tags.includes(t)));
+  }
+  if (!pool.length){
+    session.queue=[]; session.index=-1;
+    updateStats("No items match your filter yet.");
+    return;
+  }
+
+  const weighted=[];
+  for (const it of pool){
+    const w = 1 + (it.again||0)*2 + Math.max(0, (it.seen||0)-(it.good||0))*0.5;
+    const copies = Math.max(1, Math.min(20, Math.round(w)));
+    for (let i=0;i<copies;i++) weighted.push(it);
+  }
+
+  const picked=new Map();
+  while (picked.size < Math.min(n, pool.length) && weighted.length){
+    const idx=Math.floor(Math.random()*weighted.length);
+    picked.set(weighted[idx].id, weighted[idx]);
+  }
+
+  session.queue = Array.from(picked.values());
+  session.index = -1;
+}
+
+function setPrompt(it){
+  const prompt = (session.direction==="de-en") ? it.front : it.back;
+  document.getElementById("prompt").textContent = prompt;
+
+  const ans=document.getElementById("answer");
+  ans.value=""; ans.disabled=false; ans.focus();
+
+  holdForSpace=false;
+  feedback(`<span class="muted">Type your answer and press Enter.</span>`, "", "");
+  renderSlots(slotTargetForCurrentCard(), "");
+  updateAnswerVisibilityForSlots();
+}
+
+function nextCard(){
+  if (!session.queue.length){
+    updateStats("No items match your filter yet.");
+    return;
+  }
+  session.index++;
+  if (session.index >= session.queue.length){
+    updateStats("Session finished ✓");
+    document.getElementById("prompt").textContent="—";
+    document.getElementById("answer").disabled=true;
+    document.getElementById("slots").style.display="none";
+    return;
+  }
+  session.current = session.queue[session.index];
+  setPrompt(session.current);
+  showTagsUsed();
+}
+
+/* ---------- checkAnswer (practice still grades visually, but does NOT save) ---------- */
 function checkAnswer(){
-  const it = session.current; if (!it) return;
+  const it = session.current;
+  if (!it) return;
 
   const user  = document.getElementById("answer").value;
   const expRaw = (session.direction==="de-en") ? it.back : it.front;
+  const ok = isCorrect(user, expRaw);
 
-  // -------- PRACTICE (TEST) MODE --------
+  const expDisplay = expRaw.replace(/\([^)]*\)/g,"").trim();
+  const diff = charDiff(expDisplay, user || "");
+
+  // PRACTICE MODE: show ok/bad + diff, but do NOT mutate stats, do NOT save
   if (session.mode === "test"){
-    // Compute correctness + letter diff, but DON'T mutate stats or save
-    const expDisplay = expRaw.replace(/\([^)]*\)/g,"").trim();
-    const ok = isCorrect(user, expRaw);
-    const diff = charDiff(expDisplay, user || "");
-  
-    if (ok) {
-      // All letters will render green via .ok-ch
+    if (ok){
       feedback(
-        `<div class="answer-big">✓ ${escapeHtml(user || "")}</div>
+        `<div class="answer-big">✓ <pre class="inline">${diff.typedHTML || escapeHtml(user || "")}</pre></div>
          <div class="label">Expected</div>
          <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
         "good",
-        `<div class="small">Press <b>Delete</b> to retry now, or <b>Space</b> for next.</div>`
+        `<div class="small">Practice mode — not saved. Press <b>Delete</b> to retry, or <b>Space</b> for next.</div>`
       );
     } else {
-      // Letter-level red/green diff
       feedback(
         `<span>✗</span>
          <div class="label">Your answer</div>
@@ -597,18 +680,14 @@ function checkAnswer(){
          <div class="label">Expected</div>
          <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
         "bad",
-        `<div class="small">Practice mode — not saved. Press <b>Delete</b> to retry now, or <b>Space</b> for next.</div>`
+        `<div class="small">Practice mode — not saved. Press <b>Delete</b> to retry, or <b>Space</b> for next.</div>`
       );
     }
-  
-    // No stats changes, no save, just advance on Space
     holdForSpace = true;
     return;
   }
 
-
-  // -------- TRAINING MODE (as before) --------
-  const ok = isCorrect(user, expRaw);
+  // TRAINING MODE: mutate stats + save
   it.seen = (it.seen||0) + 1;
   it.last = Date.now();
 
@@ -622,8 +701,6 @@ function checkAnswer(){
     );
   } else {
     it.again = (it.again||0) + 1;
-    const expDisplay = expRaw.replace(/\([^)]*\)/g,"").trim();
-    const diff = charDiff(expDisplay, user || "");
     feedback(
       `<span>✗</span>
        <div class="label">Your answer</div>
@@ -640,8 +717,69 @@ function checkAnswer(){
   holdForSpace = true;
 }
 
+/* ---------- cloud sync ---------- */
+const sheetUrlInput = document.getElementById("sheetUrl");
+const autoSyncSel = document.getElementById("autoSync");
+sheetUrlInput.value = localStorage.getItem(LS_SHEET_URL) || "";
+autoSyncSel.value = localStorage.getItem(LS_AUTO_SYNC) || "off";
+autoSyncSel.onchange = ()=> localStorage.setItem(LS_AUTO_SYNC, autoSyncSel.value);
+sheetUrlInput.onchange = ()=> localStorage.setItem(LS_SHEET_URL, sheetUrlInput.value.trim());
+
+document.getElementById("btnSync").onclick = async () => {
+  const url = (sheetUrlInput.value||"").trim();
+  if (!url){ alert("Please paste your Sheet URL first."); return; }
+  try{
+    const res = await fetch(url, {cache:"no-store"});
+    if (!res.ok) throw new Error("HTTP "+res.status);
+    const ct = (res.headers.get("content-type")||"").toLowerCase();
+    let added=0, updated=0;
+
+    if (ct.includes("application/json")){
+      const data = await res.json();
+      const items = (data.items||[]).map(x => ({
+        front:String(x.front||"").trim(),
+        back:String(x.back||"").trim(),
+        tags:String(x.tags||"").split(/[,\s]+/).filter(Boolean)
+      })).filter(x=>x.front && x.back);
+      for (const it of items){ upsertItem(it) ? updated++ : added++; }
+    } else {
+      const text = await res.text();
+      const rows = parseDelimited(text);
+      if (!rows.length) throw new Error("No rows found");
+      const header = rows[0].map(h=>String(h||"").trim().toLowerCase());
+      let start=0, cFront=0, cBack=1, cTags=2;
+      if (header.includes("front") && header.includes("back")){
+        cFront=header.indexOf("front");
+        cBack=header.indexOf("back");
+        cTags=header.indexOf("tags");
+        start=1;
+      }
+      for (let i=start;i<rows.length;i++){
+        const r=rows[i];
+        const front=String(r[cFront]||"").trim();
+        const back=String(r[cBack]||"").trim();
+        const tags=(cTags>=0 && r[cTags]) ? String(r[cTags]).split(/[,\s]+/).filter(Boolean) : [];
+        if (!front || !back) continue;
+        upsertItem({front,back,tags}) ? updated++ : added++;
+      }
+    }
+    save();
+    updateStats(`Synced. Added ${added}, updated ${updated}.`);
+    rebuildTagDropdowns(); renderManager();
+  } catch(err){
+    alert("Sync failed: " + err.message + "\nTip: For CSV, use 'Publish to the web' link, or use the JSON Apps Script option.");
+  }
+};
+
+window.addEventListener("load", async ()=>{
+  if (autoSyncSel.value === "on" && sheetUrlInput.value.trim()){
+    document.getElementById("btnSync").click();
+  }
+});
+
 /* ---------- Cards Manager ---------- */
 const mgrBody = document.getElementById("mgrBody");
+
 function rowHTML(it){
   const tagsStr = (it.tags||[]).join(", ");
   return `
@@ -655,6 +793,7 @@ function rowHTML(it){
       </td>
     </tr>`;
 }
+
 function renderManager(){
   const q = document.getElementById("mgrSearch").value.trim().toLowerCase();
   const tfilter = document.getElementById("mgrTagFilter").value.trim();
@@ -666,17 +805,20 @@ function renderManager(){
   }).sort((a,b)=> (a.front||"").localeCompare(b.front||"", "de"));
   mgrBody.innerHTML = rows.map(rowHTML).join("") || `<tr><td colspan="4" class="muted">No cards match.</td></tr>`;
 }
+
 function getRowValues(tr){
   const front = tr.querySelector(".mgr-front").value.trim();
   const back  = tr.querySelector(".mgr-back").value.trim();
-  let tagsStr = tr.querySelector(".mgr-tags").value.trim();
+  const tagsStr = tr.querySelector(".mgr-tags").value.trim();
   const tags = tagsStr ? tagsStr.split(/[,\s]+/).filter(Boolean) : [];
   return {front, back, tags};
 }
+
 function bindManagerEvents(){
   mgrBody.onclick = (e)=>{
     const tr = e.target.closest("tr"); if (!tr) return;
     const id = tr.getAttribute("data-id");
+
     if (e.target.classList.contains("mgr-save")){
       const v = getRowValues(tr);
       if (!v.front || !v.back){ alert("Front and Back cannot be empty."); return; }
@@ -692,14 +834,21 @@ function bindManagerEvents(){
       }
       renderManager();
     }
+
     if (e.target.classList.contains("mgr-del")){
       if (!confirm("Delete this card?")) return;
       const idx = db.items.findIndex(x=>x.id===id);
-      if (idx>=0){ db.items.splice(idx,1); save(); updateStats("Deleted"); rebuildTagDropdowns(); renderManager(); }
-      else if (id==="__new__"){ tr.remove(); }
+      if (idx>=0){
+        db.items.splice(idx,1);
+        save(); updateStats("Deleted");
+        rebuildTagDropdowns(); renderManager();
+      } else if (id==="__new__"){
+        tr.remove();
+      }
     }
   };
 }
+
 document.getElementById("mgrRefresh").onclick = ()=> renderManager();
 document.getElementById("mgrAddRow").onclick = ()=>{
   const tr = document.createElement("tr");
@@ -717,7 +866,7 @@ document.getElementById("mgrAddRow").onclick = ()=>{
 document.getElementById("mgrSearch").oninput = ()=> renderManager();
 document.getElementById("mgrTagFilter").onchange = ()=> renderManager();
 
-// --- central API settings in localStorage
+/* ---------- API state ---------- */
 const LS_API_URL = "fsp_api_url";
 const LS_API_TOKEN = "fsp_api_token";
 const apiUrlEl = document.getElementById("apiUrl");
@@ -727,7 +876,6 @@ apiTokenEl.value = localStorage.getItem(LS_API_TOKEN) || "";
 apiUrlEl.onchange = ()=> localStorage.setItem(LS_API_URL, apiUrlEl.value.trim());
 apiTokenEl.onchange = ()=> localStorage.setItem(LS_API_TOKEN, apiTokenEl.value.trim());
 
-// --- state <-> API
 function stateFromDB(){
   const stats = {};
   db.items.forEach(it=>{
@@ -738,44 +886,78 @@ function stateFromDB(){
 function applyStateToDB(state){
   const stats = state?.stats || {};
   db.items.forEach(it=>{
-    const key = it.front+"|||"+it.back; const s = stats[key];
-    if (s){ it.seen=s.seen||0; it.good=s.good||0; it.again=s.again||0; it.last=s.last||0; if ((!it.tags||!it.tags.length) && s.tags) it.tags=s.tags; }
+    const key = it.front+"|||"+it.back;
+    const s = stats[key];
+    if (s){
+      it.seen=s.seen||0; it.good=s.good||0; it.again=s.again||0; it.last=s.last||0;
+      if ((!it.tags||!it.tags.length) && s.tags) it.tags=s.tags;
+    }
   });
 }
+
 async function apiLoadAll(){
-  const api = apiUrlEl.value.trim(); const token = apiTokenEl.value.trim();
+  const api = apiUrlEl.value.trim();
+  const token = apiTokenEl.value.trim();
   if (!api) return alert("Set API URL first.");
   try{
-    const r1 = await fetch(api + "?mode=cards", {cache:"no-store"}); if (!r1.ok) throw new Error("cards HTTP " + r1.status);
-    const data1 = await r1.json(); let added=0, updated=0;
-    (data1.items||[]).forEach(rec=>{ const up = upsertItem({front:String(rec.front||''), back:String(rec.back||''), tags:String(rec.tags||'').split(/[,\s]+/).filter(Boolean)}); if (up) updated++; else added++; });
+    const r1 = await fetch(api + "?mode=cards", {cache:"no-store"});
+    if (!r1.ok) throw new Error("cards HTTP " + r1.status);
+    const data1 = await r1.json();
+    (data1.items||[]).forEach(rec=>{
+      upsertItem({
+        front:String(rec.front||"").trim(),
+        back:String(rec.back||"").trim(),
+        tags:String(rec.tags||"").split(/[,\s]+/).filter(Boolean)
+      });
+    });
+
     if (token){
-      const r2 = await fetch(api + "?mode=state&token=" + encodeURIComponent(token), {cache:"no-store"}); if (!r2.ok) throw new Error("state HTTP " + r2.status);
-      const data2 = await r2.json(); applyStateToDB(data2.state||{});
+      const r2 = await fetch(api + "?mode=state&token=" + encodeURIComponent(token), {cache:"no-store"});
+      if (!r2.ok) throw new Error("state HTTP " + r2.status);
+      const data2 = await r2.json();
+      applyStateToDB(data2.state||{});
     }
-    save(); rebuildTagDropdowns(); renderManager(); updateStats(`API loaded. Cards + State`);
-  } catch(err){ alert("API load failed: " + err.message); }
+
+    save(); rebuildTagDropdowns(); renderManager();
+    updateStats("API loaded. Cards + State");
+  } catch(err){
+    alert("API load failed: " + err.message);
+  }
 }
+
 let saveTimer = null;
 function apiSaveStateDebounced(){
-  const api = apiUrlEl.value.trim(); const token = apiTokenEl.value.trim();
-  if (!api || !token) return; if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(async ()=>{ try{ const payload = { token, state: stateFromDB() }; await fetch(api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});}catch(_){ } }, 500);
+  const api = apiUrlEl.value.trim();
+  const token = apiTokenEl.value.trim();
+  if (!api || !token) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    try{
+      const payload = { token, state: stateFromDB() };
+      await fetch(api, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    } catch(_){}
+  }, 500);
 }
 document.getElementById("btnApiLoad").onclick = apiLoadAll;
 
 /* ---------- UI bindings ---------- */
 document.getElementById("start").onclick = () => { buildQueue(); nextCard(); };
+
 document.getElementById("end").onclick = () => {
-  session.queue=[]; session.index=-1; session.current=null; updateStats("Ended");
-  document.getElementById("prompt").textContent="—"; document.getElementById("answer").disabled=true; document.getElementById("slots").style.display="none";
+  session.queue=[]; session.index=-1; session.current=null;
+  updateStats("Ended");
+  document.getElementById("prompt").textContent="—";
+  document.getElementById("answer").disabled=true;
+  document.getElementById("slots").style.display="none";
 };
+
 document.getElementById("reveal").onclick = () => {
   if (!session.current) return;
   const ans = (session.direction==="de-en") ? session.current.back : session.current.front;
-  feedback(`Answer: <b>${escapeHtml(ans)}</b><div class="small">Press <b>Space</b> to continue.</div>`, "", "");
+  feedback(`Answer: <b>${escapeHtml(ans)}</b>`, "", `<div class="small">Press <b>Space</b> to continue.</div>`);
   holdForSpace = true;
 };
+
 document.getElementById("showHint").onclick = () => {
   if (!session.current) return;
   const ans = (session.direction==="de-en") ? session.current.back : session.current.front;
@@ -783,48 +965,68 @@ document.getElementById("showHint").onclick = () => {
   const hint = core.slice(0, Math.max(1, Math.ceil(core.length*0.5))) + "…";
   feedback(`Hint: <b>${escapeHtml(hint)}</b>`, "", "");
 };
+
 document.getElementById("markAgain").onclick = () => {
   if (!session.current) return;
-  session.current.again=(session.current.again||0)+1; session.current.seen=(session.current.seen||0)+1; save(); apiSaveStateDebounced();
-  feedback(`Marked Again`, "bad", `<div class="small">Press <b>Space</b> for next.</div>`); holdForSpace = true;
+  if (session.mode === "test"){
+    feedback(`Practice mode: not saved.`, "", `<div class="small">Press <b>Space</b> for next.</div>`);
+    holdForSpace = true;
+    return;
+  }
+  session.current.again=(session.current.again||0)+1;
+  session.current.seen=(session.current.seen||0)+1;
+  save(); apiSaveStateDebounced();
+  feedback(`Marked Again`, "bad", `<div class="small">Press <b>Space</b> for next.</div>`);
+  holdForSpace = true;
 };
+
 document.getElementById("markGood").onclick = () => {
   if (!session.current) return;
-  session.current.good=(session.current.good||0)+1; session.current.seen=(session.current.seen||0)+1; save(); apiSaveStateDebounced();
-  feedback(`Marked Good`, "good", `<div class="small">Press <b>Space</b> for next.</div>`); holdForSpace = true;
-};
-document.getElementById("answer").addEventListener("keydown", e=>{
-  if (e.key === "Tab"){ e.preventDefault(); document.getElementById("reveal").click(); return; }
-  if (e.key === "Enter"){ e.preventDefault(); checkAnswer(); }
-  if (e.key === "Enter"){
-  e.preventDefault();
-  if (modeSel.value === "test"){
-    // Option A (default): show what you typed + expected, then Space to continue
-    checkAnswer();
-
-    // Option B (instant advance): uncomment next 2 lines and remove checkAnswer() above
-    // nextCard();
-    // return;
-
-  } else {
-    checkAnswer();
+  if (session.mode === "test"){
+    feedback(`Practice mode: not saved.`, "", `<div class="small">Press <b>Space</b> for next.</div>`);
+    holdForSpace = true;
+    return;
   }
-}
+  session.current.good=(session.current.good||0)+1;
+  session.current.seen=(session.current.seen||0)+1;
+  save(); apiSaveStateDebounced();
+  feedback(`Marked Good`, "good", `<div class="small">Press <b>Space</b> for next.</div>`);
+  holdForSpace = true;
+};
+
+document.getElementById("answer").addEventListener("keydown", e=>{
+  // Tab = reveal
+  if (e.key === "Tab"){
+    e.preventDefault();
+    document.getElementById("reveal").click();
+    return;
+  }
+  // Enter = check
+  if (e.key === "Enter"){
+    e.preventDefault();
+    checkAnswer();
+    return;
+  }
 });
+
 document.getElementById("answer").addEventListener("input", ()=>{
   if (!session.current) return;
   renderSlots(slotTargetForCurrentCard(), document.getElementById("answer").value);
 });
+
 slotSel.addEventListener("change", ()=>{
   if (!session.current) return;
   renderSlots(slotTargetForCurrentCard(), document.getElementById("answer").value);
   updateAnswerVisibilityForSlots();
 });
-document.getElementById("slots").addEventListener("click", ()=>{ document.getElementById("answer").focus(); });
 
-// Global shortcuts (character-based Y; don’t steal focus from typing)
+document.getElementById("slots").addEventListener("click", ()=>{
+  document.getElementById("answer").focus();
+});
+
+// Global shortcuts
 document.addEventListener("keydown", e=>{
-  // SPACE => next (only when we're holding after reveal/correct/wrong)
+  // Space => next ONLY when holding after feedback/reveal
   if (holdForSpace && e.code === "Space"){
     e.preventDefault();
     holdForSpace = false;
@@ -832,29 +1034,27 @@ document.addEventListener("keydown", e=>{
     return;
   }
 
-  // DELETE => instant retry of the same card (only when we're holding after feedback)
+  // Delete => retry same card (only after feedback)
   if (holdForSpace && (e.key === "Delete" || e.code === "Delete")){
     e.preventDefault();
     retryNow();
     return;
   }
 
-  // Optional extra: '#' as a backup retry key (you mentioned it)
-  if (holdForSpace && e.key === "#"){
-    e.preventDefault();
-    retryNow();
-    return;
-  }
-
-  // Y => Reveal (only if the answer box is not actively being typed in)
+  // Y => reveal only when not actively typing in the answer input
   if ((e.key === "y" || e.key === "Y") && !e.ctrlKey && !e.metaKey && !e.altKey){
-    if (document.activeElement === document.getElementById("answer")) return; // let you type 'y'
+    if (document.activeElement === document.getElementById("answer")) return;
     e.preventDefault();
     document.getElementById("reveal").click();
   }
 });
+
 /* ---------- init ---------- */
-updateStats(); rebuildTagDropdowns(); renderManager(); bindManagerEvents(); showTagsUsed();
+updateStats();
+rebuildTagDropdowns();
+renderManager();
+bindManagerEvents();
+showTagsUsed();
 updateAnswerVisibilityForSlots();
 </script>
 </body>
