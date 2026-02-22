@@ -76,7 +76,7 @@
       <div class="spacer"></div>
       <div class="prompt" id="prompt">—</div>
 
-      <input id="answer" placeholder="Type your answer and press Enter (Space = next after feedback)" disabled />
+      <input id="answer" placeholder="Type your answer and press Enter (Tab=Reveal)" disabled />
       <div id="slots" class="slotRow" style="display:none;"></div>
 
       <div class="controls">
@@ -157,8 +157,13 @@
       </div>
 
       <div id="tagsUsed" class="small" style="text-align:center;margin-top:8px;"></div>
-      <div class="small muted" style="text-align:center;margin-top:8px;">
-        Shortcuts: <b>Tab</b>=Reveal • <b>Delete</b>=Retry (after feedback) • <b>Space</b>=Next (after feedback)
+
+      <div class="small muted" style="text-align:center;margin-top:10px;line-height:1.6;">
+        <b>Keyboard-only:</b>
+        <b>Tab</b>=Reveal (keeps focus for typing) •
+        <b>Enter</b>=Submit •
+        <b>Enter/Space</b>=Next (after feedback) •
+        <b>Delete</b>=Retry (after feedback)
       </div>
     </div>
 
@@ -208,7 +213,7 @@
     <!-- IMPORT / EXPORT -->
     <div class="card" style="margin-top:18px;">
       <div class="section-title">Import / Export (manual)</div>
-      <label>Paste items (one per line): <span class="muted">Format: <code>German;English;tags</code> (TAB also ok). Synonyms with <code>/</code>, <code>|</code>, <code>,</code>. Bracket hints like <code>(- n)</code> ignored. “X of Y” also accepts just <code>X</code>.</span></label>
+      <label>Paste items (one per line): <span class="muted">Format: <code>German;English;tags</code> (TAB also ok). Synonyms with <code>/</code>, <code>|</code>, <code>,</code>. Bracket hints like <code>(- n)</code> ignored.</span></label>
       <textarea id="bulk" rows="8" placeholder="nape/neck; der Nacken&#10;shoulder; die Schulter (- n)&#10;buttocks; der Hintern, Po"></textarea>
       <div class="row" style="margin-top:10px;">
         <div><button id="btnImport" class="primary">+ Import / Merge</button></div>
@@ -278,7 +283,8 @@ slashSel.onchange   = ()=> localStorage.setItem(LS_SLASH_MODE, slashSel.value);
 slotSel.onchange    = ()=> localStorage.setItem(LS_SLOT_TOGGLE, slotSel.value);
 modeSel.onchange    = ()=> localStorage.setItem(LS_MODE, modeSel.value);
 
-let holdForSpace = false;
+const answerEl = document.getElementById("answer");
+let holdForSpace = false;  // "feedback state": Enter/Space => next; Delete => retry
 
 /* ---------- DB ---------- */
 function loadDB(){
@@ -337,7 +343,7 @@ function parseDelimited(text){
     if (inQuotes){
       if (c === '"'){
         if (text[i] === '"'){ field += '"'; i++; }
-        else { inQuotes = false; }
+        else inQuotes = false;
       } else field += c;
     } else {
       if (c === '"') inQuotes = true;
@@ -532,18 +538,19 @@ function firstVariant(text){
   if (mode === "literal") return String(text).split(/\s*(?:\||,)\s*/)[0] || "";
   return String(text).split(/\s*(?:\/|\||,)\s*/)[0] || "";
 }
-function stripArticleIfNeeded(str){
-  if (!str) return "";
-  return str; // always keep article visually for slots
-}
+
+/* IMPORTANT CHANGE:
+   We DO NOT strip articles for the slots anymore.
+   That means you see underline-length for "das Rauchen" as "das Rauchen".
+*/
 function slotTargetForCurrentCard(){
   if (!session.current) return "";
   const raw = (session.direction==="de-en") ? session.current.back : session.current.front;
   let core = raw.replace(/\([^)]*\)/g,"").trim();
   core = firstVariant(core);
-  core = stripArticleIfNeeded(core);
   return core;
 }
+
 function renderSlots(target, typed){
   const host = document.getElementById("slots");
   const on = (slotSel.value === "on");
@@ -563,9 +570,8 @@ function renderSlots(target, typed){
   }).join("");
 }
 function updateAnswerVisibilityForSlots(){
-  const ans = document.getElementById("answer");
-  if (slotSel.value === "on") ans.classList.add("slots-hidden");
-  else ans.classList.remove("slots-hidden");
+  if (slotSel.value === "on") answerEl.classList.add("slots-hidden");
+  else answerEl.classList.remove("slots-hidden");
 }
 
 /* ---------- retry now ---------- */
@@ -621,11 +627,11 @@ function setPrompt(it){
   const prompt = (session.direction==="de-en") ? it.front : it.back;
   document.getElementById("prompt").textContent = prompt;
 
-  const ans=document.getElementById("answer");
-  ans.value=""; ans.disabled=false; ans.focus();
+  answerEl.value=""; answerEl.disabled=false;
+  answerEl.focus();
 
   holdForSpace=false;
-  feedback(`<span class="muted">Type your answer and press Enter.</span>`, "", "");
+  feedback(`<span class="muted">Type your answer and press <b>Enter</b>. (<b>Tab</b> = Reveal)</span>`, "", "");
   renderSlots(slotTargetForCurrentCard(), "");
   updateAnswerVisibilityForSlots();
 }
@@ -639,7 +645,7 @@ function nextCard(){
   if (session.index >= session.queue.length){
     updateStats("Session finished ✓");
     document.getElementById("prompt").textContent="—";
-    document.getElementById("answer").disabled=true;
+    answerEl.disabled=true;
     document.getElementById("slots").style.display="none";
     return;
   }
@@ -653,7 +659,7 @@ function checkAnswer(){
   const it = session.current;
   if (!it) return;
 
-  const user  = document.getElementById("answer").value;
+  const user  = answerEl.value;
   const expRaw = (session.direction==="de-en") ? it.back : it.front;
   const ok = isCorrect(user, expRaw);
 
@@ -668,7 +674,7 @@ function checkAnswer(){
          <div class="label">Expected</div>
          <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
         "good",
-        `<div class="small">Practice mode — not saved. Press <b>Delete</b> to retry, or <b>Space</b> for next.</div>`
+        `<div class="small">Practice mode — not saved. <b>Enter/Space</b>=Next, <b>Delete</b>=Retry.</div>`
       );
     } else {
       feedback(
@@ -678,10 +684,11 @@ function checkAnswer(){
          <div class="label">Expected</div>
          <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
         "bad",
-        `<div class="small">Practice mode — not saved. Press <b>Delete</b> to retry, or <b>Space</b> for next.</div>`
+        `<div class="small">Practice mode — not saved. <b>Enter/Space</b>=Next, <b>Delete</b>=Retry.</div>`
       );
     }
     holdForSpace = true;
+    answerEl.focus();
     return;
   }
 
@@ -695,7 +702,7 @@ function checkAnswer(){
       `<div class="answer-big">✓ ${escapeHtml(user)} — correct</div>
        <div class="answer-big">Accepted: <b>${escapeHtml(expRaw)}</b></div>`,
       "good",
-      `<div class="small">Press <b>Space</b> for next.</div>`
+      `<div class="small"><b>Enter/Space</b>=Next, <b>Delete</b>=Retry.</div>`
     );
   } else {
     it.again = (it.again||0) + 1;
@@ -706,16 +713,17 @@ function checkAnswer(){
        <div class="label">Expected</div>
        <div class="answer-big"><pre class="inline">${diff.expectedHTML}</pre></div>`,
       "bad",
-      `<div class="small">Press <b>Space</b> for next.</div>`
+      `<div class="small"><b>Delete</b>=Retry now, or <b>Enter/Space</b>=Next.</div>`
     );
   }
 
   save();
   apiSaveStateDebounced();
   holdForSpace = true;
+  answerEl.focus();
 }
 
-/* ---------- cloud sync ---------- */
+/* ---------- Cloud Sync ---------- */
 const sheetUrlInput = document.getElementById("sheetUrl");
 const autoSyncSel = document.getElementById("autoSync");
 sheetUrlInput.value = localStorage.getItem(LS_SHEET_URL) || "";
@@ -938,125 +946,188 @@ function apiSaveStateDebounced(){
 }
 document.getElementById("btnApiLoad").onclick = apiLoadAll;
 
-/* ---------- UI bindings ---------- */
+/* ---------- UI buttons ---------- */
 document.getElementById("start").onclick = () => { buildQueue(); nextCard(); };
-
 document.getElementById("end").onclick = () => {
   session.queue=[]; session.index=-1; session.current=null;
   updateStats("Ended");
   document.getElementById("prompt").textContent="—";
-  document.getElementById("answer").disabled=true;
+  answerEl.disabled=true;
   document.getElementById("slots").style.display="none";
 };
 
-document.getElementById("reveal").onclick = () => {
+/* Reveal: keep focus for typing */
+function doReveal(){
   if (!session.current) return;
   const ans = (session.direction==="de-en") ? session.current.back : session.current.front;
-  feedback(`Answer: <b>${escapeHtml(ans)}</b>`, "", `<div class="small">Press <b>Space</b> to continue.</div>`);
+  feedback(`Answer: <b>${escapeHtml(ans)}</b>`, "", `<div class="small"><b>Enter/Space</b>=Next, or start typing to continue on this card.</div>`);
   holdForSpace = true;
-};
+  answerEl.focus(); // IMPORTANT FIX: no mouse needed
+}
+document.getElementById("reveal").onclick = doReveal;
 
+/* Hint: also keep focus */
 document.getElementById("showHint").onclick = () => {
   if (!session.current) return;
   const ans = (session.direction==="de-en") ? session.current.back : session.current.front;
   const core = ans.replace(/\([^)]*\)/g,"").trim();
   const hint = core.slice(0, Math.max(1, Math.ceil(core.length*0.5))) + "…";
   feedback(`Hint: <b>${escapeHtml(hint)}</b>`, "", "");
+  answerEl.focus();
 };
 
 document.getElementById("markAgain").onclick = () => {
   if (!session.current) return;
   if (session.mode === "test"){
-    feedback(`Practice mode: not saved.`, "", `<div class="small">Press <b>Space</b> for next.</div>`);
+    feedback(`Practice mode: not saved.`, "", `<div class="small"><b>Enter/Space</b>=Next</div>`);
     holdForSpace = true;
+    answerEl.focus();
     return;
   }
   session.current.again=(session.current.again||0)+1;
   session.current.seen=(session.current.seen||0)+1;
   save(); apiSaveStateDebounced();
-  feedback(`Marked Again`, "bad", `<div class="small">Press <b>Space</b> for next.</div>`);
+  feedback(`Marked Again`, "bad", `<div class="small"><b>Enter/Space</b>=Next</div>`);
   holdForSpace = true;
+  answerEl.focus();
 };
 
 document.getElementById("markGood").onclick = () => {
   if (!session.current) return;
   if (session.mode === "test"){
-    feedback(`Practice mode: not saved.`, "", `<div class="small">Press <b>Space</b> for next.</div>`);
+    feedback(`Practice mode: not saved.`, "", `<div class="small"><b>Enter/Space</b>=Next</div>`);
     holdForSpace = true;
+    answerEl.focus();
     return;
   }
   session.current.good=(session.current.good||0)+1;
   session.current.seen=(session.current.seen||0)+1;
   save(); apiSaveStateDebounced();
-  feedback(`Marked Good`, "good", `<div class="small">Press <b>Space</b> for next.</div>`);
+  feedback(`Marked Good`, "good", `<div class="small"><b>Enter/Space</b>=Next</div>`);
   holdForSpace = true;
+  answerEl.focus();
 };
 
-document.getElementById("answer").addEventListener("keydown", e=>{
-  // Tab = reveal
+/* ---------- KEYBOARD BEHAVIOR (the important part) ---------- */
+
+/* When user starts typing after reveal/feedback:
+   exit "feedback state" so Space is a normal space again. */
+function exitHoldIfTypingKey(e){
+  if (!holdForSpace) return;
+  const k = e.key;
+
+  // Keys that mean "I want to type", not "navigate"
+  const isTyping =
+    (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) || // letters, space, punctuation
+    k === "Backspace";
+
+  if (isTyping){
+    holdForSpace = false;
+  }
+}
+
+/* Answer input: Tab=Reveal, Enter=Submit (always) */
+answerEl.addEventListener("keydown", (e)=>{
+  exitHoldIfTypingKey(e);
+
   if (e.key === "Tab"){
     e.preventDefault();
-    document.getElementById("reveal").click();
+    doReveal();
     return;
   }
-  // Enter = check
   if (e.key === "Enter"){
     e.preventDefault();
+    // If we are in feedback-state, Enter should go NEXT (keyboard-only flow)
+    if (holdForSpace){
+      holdForSpace = false;
+      nextCard();
+      return;
+    }
     checkAnswer();
     return;
   }
 });
 
-document.getElementById("answer").addEventListener("input", ()=>{
+/* Slots update */
+answerEl.addEventListener("input", ()=>{
   if (!session.current) return;
-  renderSlots(slotTargetForCurrentCard(), document.getElementById("answer").value);
+  // If user types, we are definitely not "waiting to go next"
+  holdForSpace = false;
+  renderSlots(slotTargetForCurrentCard(), answerEl.value);
 });
 
 slotSel.addEventListener("change", ()=>{
   if (!session.current) return;
-  renderSlots(slotTargetForCurrentCard(), document.getElementById("answer").value);
+  renderSlots(slotTargetForCurrentCard(), answerEl.value);
   updateAnswerVisibilityForSlots();
 });
+document.getElementById("slots").addEventListener("click", ()=> answerEl.focus());
 
-document.getElementById("slots").addEventListener("click", ()=>{
-  document.getElementById("answer").focus();
-});
+/* Global shortcuts:
+   - Enter/Space => next (only in feedback state)
+   - Delete => retry (only in feedback state)
+*/
+document.addEventListener("keydown", (e)=>{
+  // If the input is focused, its handler is enough
+  if (document.activeElement === answerEl) return;
 
-
-// Global shortcuts (FIXED SAFE VERSION)
-document.addEventListener("keydown", e=>{
-
-  const answerInput = document.getElementById("answer");
-  const typing = (document.activeElement === answerInput);
-
-  // Space → next ONLY if we are in feedback state AND not typing
-  if (holdForSpace && e.code === "Space" && !typing){
+  if (holdForSpace && (e.code === "Space" || e.key === "Enter")){
     e.preventDefault();
     holdForSpace = false;
     nextCard();
     return;
   }
 
-  // Delete → retry same card (only after feedback)
   if (holdForSpace && (e.key === "Delete" || e.code === "Delete")){
     e.preventDefault();
     retryNow();
     return;
   }
 
-  // Y → reveal only when not typing
-  if ((e.key === "y" || e.key === "Y") && !typing){
+  // Optional: Tab reveal even if focus is elsewhere
+  if (e.key === "Tab"){
     e.preventDefault();
-    document.getElementById("reveal").click();
+    doReveal();
+    return;
   }
 });
+
 /* ---------- init ---------- */
+function updateAnswerVisibilityForSlotsInit(){
+  updateAnswerVisibilityForSlots();
+}
 updateStats();
 rebuildTagDropdowns();
 renderManager();
 bindManagerEvents();
 showTagsUsed();
-updateAnswerVisibilityForSlots();
+updateAnswerVisibilityForSlotsInit();
+
+/* Placeholder manager functions (needed; kept as-is if you had them) */
+function renderManager() {
+  const mgrBody = document.getElementById("mgrBody");
+  const q = document.getElementById("mgrSearch").value.trim().toLowerCase();
+  const tfilter = document.getElementById("mgrTagFilter").value.trim();
+  const rows = db.items.filter(it=>{
+    const hay = (it.front+" "+it.back+" "+(it.tags||[]).join(" ")).toLowerCase();
+    const okQ = !q || hay.includes(q);
+    const okT = !tfilter || (it.tags||[]).includes(tfilter);
+    return okQ && okT;
+  }).sort((a,b)=> (a.front||"").localeCompare(b.front||"", "de"));
+  mgrBody.innerHTML = rows.map(it=>{
+    const tagsStr = (it.tags||[]).join(", ");
+    return `
+      <tr data-id="${it.id}">
+        <td><input class="mgr-front" value="${escapeHtml(it.front)}" /></td>
+        <td><input class="mgr-back" value="${escapeHtml(it.back)}" /></td>
+        <td><input class="mgr-tags" value="${escapeHtml(tagsStr)}" /></td>
+        <td class="actions">
+          <button class="btn-small primary mgr-save">Save</button>
+          <button class="btn-small mgr-del">Delete</button>
+        </td>
+      </tr>`;
+  }).join("") || `<tr><td colspan="4" class="muted">No cards match.</td></tr>`;
+}
 </script>
 </body>
 </html>
