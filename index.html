@@ -1028,26 +1028,49 @@ function exitHoldIfTypingKey(e){
 
 /* Answer input: Tab=Reveal, Enter=Submit (always) */
 answerEl.addEventListener("keydown", (e)=>{
-  exitHoldIfTypingKey(e);
 
+  // TAB = Reveal
   if (e.key === "Tab"){
     e.preventDefault();
     doReveal();
     return;
   }
+
+  // ENTER behavior
   if (e.key === "Enter"){
     e.preventDefault();
-    // If we are in feedback-state, Enter should go NEXT (keyboard-only flow)
+
+    // If we are in feedback state → go NEXT
     if (holdForSpace){
       holdForSpace = false;
       nextCard();
       return;
     }
+
+    // Otherwise → submit
     checkAnswer();
     return;
   }
-});
 
+  // SPACE behavior
+  if (e.code === "Space"){
+    if (holdForSpace){
+      e.preventDefault();
+      holdForSpace = false;
+      nextCard();
+      return;
+    }
+    // otherwise allow normal space typing
+  }
+
+  // DELETE = Retry (only in feedback)
+  if (e.key === "Delete" && holdForSpace){
+    e.preventDefault();
+    retryNow();
+    return;
+  }
+
+});
 /* Slots update */
 answerEl.addEventListener("input", ()=>{
   if (!session.current) return;
