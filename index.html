@@ -52,10 +52,22 @@
   @media (max-width:640px){.feedback.good .answer-big{font-size:30px!important}}
 
   /* Hangman-style slots (underlines) */
-  .slotRow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
-  .slot{
-    min-width:28px;height:38px;border:none;border-bottom:3px solid #263a66;border-radius:0;
-    background:transparent;font-size:28px;display:flex;align-items:flex-end;justify-content:center;padding:0 2px
+  .slotRow {
+  display: inline-block;
+  text-align: center;
+  line-height: 48px;
+  margin-top: 12px;
+  white-space: normal;
+  }
+  .slot {
+  display: inline-block;
+  min-width: 28px;
+  height: 38px;
+  border-bottom: 3px solid #263a66;
+  font-size: 28px;
+  text-align: center;
+  margin: 4px 5px;
+  vertical-align: bottom;
   }
   .slot.space{border:none;background:transparent;min-width:16px;height:38px}
   .slot.filled{font-weight:700}
